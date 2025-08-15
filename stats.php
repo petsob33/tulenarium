@@ -1,4 +1,8 @@
 <?php
+// Temporary debug - always show errors
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once 'config.php';
 
 // Kontrola přihlášení pro celou aplikaci
@@ -151,9 +155,21 @@ try {
         if (is_array($media)) {
             $totalMedia += count($media);
             foreach ($media as $file) {
-                if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])) {
-                    $totalPhotos++;
+                // Ošetření různých formátů media JSON
+                if (is_array($file) && isset($file['type'])) {
+                    // Formát: [{"filename": "xxx", "type": "jpg", "size": 123}, ...]
+                    $fileType = strtolower($file['type']);
+                } elseif (is_string($file)) {
+                    // Formát: ["file1.jpg", "file2.png", ...] - získáme příponu
+                    $fileType = strtolower(pathinfo($file, PATHINFO_EXTENSION));
                 } else {
+                    // Neznámý formát - přeskočíme
+                    continue;
+                }
+                
+                if (in_array($fileType, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                    $totalPhotos++;
+                } elseif (in_array($fileType, ['mp4', 'mov', 'avi', 'webm', 'mkv'])) {
                     $totalVideos++;
                 }
             }
@@ -162,12 +178,12 @@ try {
     
     // Nové pokročilé statistiky
     
-    // Eventy podle dní v týdnu
+    // Eventy podle dní v týdnu - kompatibilnější přístup
     $stmt = $db->query("
-        SELECT DAYOFWEEK(event_date) as day_of_week, COUNT(*) as count 
+        SELECT DATE_FORMAT(event_date, '%w') as day_of_week, COUNT(*) as count 
         FROM events 
-        GROUP BY DAYOFWEEK(event_date) 
-        ORDER BY DAYOFWEEK(event_date)
+        GROUP BY DATE_FORMAT(event_date, '%w') 
+        ORDER BY DATE_FORMAT(event_date, '%w')
     ");
     $weeklyStats = $stmt->fetchAll();
     
@@ -182,87 +198,110 @@ try {
     ");
     $popularLocations = $stmt->fetchAll();
     
-    // Eventy podle čtvrtletí
+    // Eventy podle čtvrtletí - kompatibilnější přístup
     $stmt = $db->query("
         SELECT 
-            QUARTER(event_date) as quarter,
+            CASE 
+                WHEN MONTH(event_date) IN (1,2,3) THEN 1
+                WHEN MONTH(event_date) IN (4,5,6) THEN 2
+                WHEN MONTH(event_date) IN (7,8,9) THEN 3
+                ELSE 4
+            END as quarter,
             YEAR(event_date) as year,
             COUNT(*) as count 
         FROM events 
-        GROUP BY YEAR(event_date), QUARTER(event_date) 
-        ORDER BY YEAR(event_date) DESC, QUARTER(event_date) DESC
+        GROUP BY YEAR(event_date), 
+                 CASE 
+                    WHEN MONTH(event_date) IN (1,2,3) THEN 1
+                    WHEN MONTH(event_date) IN (4,5,6) THEN 2
+                    WHEN MONTH(event_date) IN (7,8,9) THEN 3
+                    ELSE 4
+                 END
+        ORDER BY YEAR(event_date) DESC, quarter DESC
         LIMIT 8
     ");
     $quarterlyStats = $stmt->fetchAll();
     
-    // Růstový trend - eventy za posledních 12 měsíců
+    // Růstový trend - eventy za posledních 12 měsíců - kompatibilnější přístup
     $stmt = $db->query("
         SELECT 
             YEAR(event_date) as year,
             MONTH(event_date) as month,
             COUNT(*) as count 
         FROM events 
-        WHERE event_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        WHERE event_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
         GROUP BY YEAR(event_date), MONTH(event_date) 
         ORDER BY YEAR(event_date), MONTH(event_date)
     ");
     $trendStats = $stmt->fetchAll();
     
-    // Statistiky velikosti eventů
+    // Statistiky velikosti eventů - jednodušší přístup
+    $sizeStats = [];
     if ($participantsExists) {
+        // Získání všech eventů s počty účastníků
         $stmt = $db->query("
-            SELECT 
-                CASE 
-                    WHEN COUNT(p.id) = 0 THEN 'Bez účastníků'
-                    WHEN COUNT(p.id) <= 5 THEN 'Malé (1-5)'
-                    WHEN COUNT(p.id) <= 15 THEN 'Střední (6-15)'
-                    WHEN COUNT(p.id) <= 30 THEN 'Velké (16-30)'
-                    ELSE 'Extra velké (30+)'
-                END as size_category,
-                COUNT(*) as event_count
+            SELECT e.id, COUNT(p.id) as participant_count 
             FROM events e 
             LEFT JOIN participants p ON e.id = p.event_id 
             GROUP BY e.id
         ");
-        $temp = $stmt->fetchAll();
-        $sizeStats = [];
-        foreach ($temp as $row) {
-            $category = $row['size_category'];
+        $events = $stmt->fetchAll();
+        
+        // Kategorizace ručně v PHP
+        foreach ($events as $event) {
+            $count = $event['participant_count'];
+            if ($count == 0) {
+                $category = 'Bez účastníků';
+            } elseif ($count <= 5) {
+                $category = 'Malé (1-5)';
+            } elseif ($count <= 15) {
+                $category = 'Střední (6-15)';
+            } elseif ($count <= 30) {
+                $category = 'Velké (16-30)';
+            } else {
+                $category = 'Extra velké (30+)';
+            }
+            
             if (!isset($sizeStats[$category])) {
                 $sizeStats[$category] = 0;
             }
             $sizeStats[$category]++;
         }
     } else {
-        $stmt = $db->query("
-            SELECT 
-                CASE 
-                    WHEN people_count = 0 THEN 'Bez účastníků'
-                    WHEN people_count <= 5 THEN 'Malé (1-5)'
-                    WHEN people_count <= 15 THEN 'Střední (6-15)'
-                    WHEN people_count <= 30 THEN 'Velké (16-30)'
-                    ELSE 'Extra velké (30+)'
-                END as size_category,
-                COUNT(*) as event_count
-            FROM events 
-            GROUP BY size_category
-        ");
-        $temp = $stmt->fetchAll();
-        $sizeStats = [];
-        foreach ($temp as $row) {
-            $sizeStats[$row['size_category']] = $row['event_count'];
+        // Fallback na people_count
+        $stmt = $db->query("SELECT people_count FROM events");
+        $events = $stmt->fetchAll();
+        
+        foreach ($events as $event) {
+            $count = $event['people_count'];
+            if ($count == 0) {
+                $category = 'Bez účastníků';
+            } elseif ($count <= 5) {
+                $category = 'Malé (1-5)';
+            } elseif ($count <= 15) {
+                $category = 'Střední (6-15)';
+            } elseif ($count <= 30) {
+                $category = 'Velké (16-30)';
+            } else {
+                $category = 'Extra velké (30+)';
+            }
+            
+            if (!isset($sizeStats[$category])) {
+                $sizeStats[$category] = 0;
+            }
+            $sizeStats[$category]++;
         }
     }
     
     // Statistiky aktivních účastníků podle období
     $activeParticipants = [];
     if ($participantsExists) {
-        // Účastníci aktivní v posledním roce
+        // Účastníci aktivní v posledním roce - kompatibilnější přístup
         $stmt = $db->query("
             SELECT COUNT(DISTINCT p.name) as active_count 
             FROM participants p 
             JOIN events e ON p.event_id = e.id 
-            WHERE e.event_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)
+            WHERE e.event_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
         ");
         $activeParticipants['year'] = $stmt->fetch()['active_count'] ?: 0;
         
@@ -271,7 +310,7 @@ try {
             SELECT COUNT(DISTINCT p.name) as active_count 
             FROM participants p 
             JOIN events e ON p.event_id = e.id 
-            WHERE e.event_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+            WHERE e.event_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
         ");
         $activeParticipants['month'] = $stmt->fetch()['active_count'] ?: 0;
     }
@@ -388,15 +427,36 @@ try {
             display: none;
             flex-direction: column;
             cursor: pointer;
-            padding: 10px;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .nav-toggle:hover {
+            background-color: rgba(255,255,255,0.1);
         }
         
         .nav-toggle span {
-            width: 25px;
-            height: 3px;
+            width: 24px;
+            height: 2px;
             background: #ffffff;
-            margin: 3px 0;
-            transition: 0.3s;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+            border-radius: 1px;
+        }
+        
+        .nav-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .nav-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .nav-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
         }
         
         .container {
@@ -568,16 +628,24 @@ try {
         
         /* Mobile Responsive */
         @media (max-width: 768px) {
+            .navbar {
+                position: relative;
+            }
+            
             .nav-menu {
-                position: fixed;
+                position: absolute;
                 left: -100%;
-                top: 70px;
+                top: 100%;
                 flex-direction: column;
                 background-color: #2d2d2d;
                 width: 100%;
                 text-align: center;
-                transition: 0.3s;
+                transition: left 0.3s ease;
                 border-top: 2px solid #333333;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                margin: 0;
+                padding: 0;
+                z-index: 999;
             }
             
             .nav-menu.active {
@@ -586,11 +654,21 @@ try {
             
             .nav-item {
                 margin: 0;
+                width: 100%;
             }
             
             .nav-link {
-                padding: 15px;
+                padding: 18px 20px;
                 border-bottom: 1px solid #333333;
+                display: block;
+                width: 100%;
+                text-align: center;
+                border-left: none;
+                border-right: none;
+            }
+            
+            .nav-link:last-child {
+                border-bottom: none;
             }
             
             .nav-toggle {
@@ -1072,6 +1150,7 @@ try {
         if (navToggle) {
             navToggle.addEventListener('click', () => {
                 navMenu.classList.toggle('active');
+                navToggle.classList.toggle('active');
             });
         }
         
@@ -1080,8 +1159,20 @@ try {
             link.addEventListener('click', () => {
                 if (navMenu) {
                     navMenu.classList.remove('active');
+                    navToggle.classList.remove('active');
                 }
             });
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (navMenu && navToggle && 
+                !navMenu.contains(e.target) && 
+                !navToggle.contains(e.target) && 
+                navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            }
         });
         
         // Animace počítadel při načtení stránky

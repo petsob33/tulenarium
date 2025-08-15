@@ -450,16 +450,24 @@ try {
         }
         
         @media (max-width: 768px) {
+            .navbar {
+                position: relative;
+            }
+            
             .nav-menu {
-                position: fixed;
+                position: absolute;
                 left: -100%;
-                top: 70px;
+                top: 100%;
                 flex-direction: column;
                 background-color: #2d2d2d;
                 width: 100%;
                 text-align: center;
-                transition: 0.3s;
+                transition: left 0.3s ease;
                 border-top: 2px solid #333333;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                margin: 0;
+                padding: 0;
+                z-index: 999;
             }
             
             .nav-menu.active {
@@ -468,11 +476,21 @@ try {
             
             .nav-item {
                 margin: 0;
+                width: 100%;
             }
             
             .nav-link {
-                padding: 15px;
+                padding: 18px 20px;
                 border-bottom: 1px solid #333333;
+                display: block;
+                width: 100%;
+                text-align: center;
+                border-left: none;
+                border-right: none;
+            }
+            
+            .nav-link:last-child {
+                border-bottom: none;
             }
             
             .nav-toggle {
@@ -541,7 +559,7 @@ try {
                     <a href="admin.php" class="nav-link">Administrace</a>
                 </li>
                 <li class="nav-item">
-                    <a href="stats_simple.php" class="nav-link">Statistiky</a>
+                    <a href="stats.php" class="nav-link">Statistiky</a>
                 </li>
                 <li class="nav-item">
                     <a href="admin.php?logout=1" class="nav-link" onclick="return confirm('Opravdu se chcete odhlásit?')">Odhlásit se</a>

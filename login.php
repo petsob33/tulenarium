@@ -87,19 +87,27 @@ if (isset($_POST['login'])) {
         
         .form-group input {
             width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #404040;
-            border-radius: 8px;
+            padding: 14px 16px;
+            border: 2px solid #404040;
+            border-radius: 10px;
             background: #1a1a1a;
             color: #ffffff;
             font-size: 1rem;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .form-group input:hover {
+            border-color: #555555;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         
         .form-group input:focus {
             outline: none;
             border-color: #ffffff;
             background: #333333;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
         
         .btn {

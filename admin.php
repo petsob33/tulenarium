@@ -306,23 +306,7 @@ try {
             font-size: 2rem;
         }
         
-        .logout-btn {
-            background: #ffffff;
-            color: #000000;
-            padding: 12px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: 2px solid #ffffff;
-        }
-        
-        .logout-btn:hover {
-            background: #1a1a1a;
-            color: #ffffff;
-            border-color: #ffffff;
-        }
+
         
         .login-form {
             background: #2d2d2d;
@@ -347,23 +331,39 @@ try {
         
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #333333;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #222222;
             font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
+        }
+        
+        .form-group:focus-within label {
+            color: #000000;
         }
         
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 12px 15px;
+            padding: 14px 16px;
             border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 15px;
             background: #ffffff;
             color: #333333;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        .form-group input:hover,
+        .form-group textarea:hover,
+        .form-group select:hover {
+            border-color: #cccccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         .form-group input:focus,
@@ -372,6 +372,8 @@ try {
             outline: none;
             border-color: #222222;
             background: #f8f9fa;
+            box-shadow: 0 0 0 3px rgba(34, 34, 34, 0.1);
+            transform: translateY(-1px);
         }
         
         .form-group textarea {
@@ -563,15 +565,36 @@ try {
             display: none;
             flex-direction: column;
             cursor: pointer;
-            padding: 10px;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .nav-toggle:hover {
+            background-color: rgba(255,255,255,0.1);
         }
         
         .nav-toggle span {
-            width: 25px;
-            height: 3px;
+            width: 24px;
+            height: 2px;
             background: #ffffff;
-            margin: 3px 0;
-            transition: 0.3s;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+            border-radius: 1px;
+        }
+        
+        .nav-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .nav-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .nav-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
         }
         
         .small-text {
@@ -609,16 +632,24 @@ try {
         
         /* Mobile Responsive */
         @media (max-width: 768px) {
+            .navbar {
+                position: relative;
+            }
+            
             .nav-menu {
-                position: fixed;
+                position: absolute;
                 left: -100%;
-                top: 70px;
+                top: 100%;
                 flex-direction: column;
                 background-color: #2d2d2d;
                 width: 100%;
                 text-align: center;
-                transition: 0.3s;
+                transition: left 0.3s ease;
                 border-top: 2px solid #333333;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                margin: 0;
+                padding: 0;
+                z-index: 999;
             }
             
             .nav-menu.active {
@@ -627,11 +658,21 @@ try {
             
             .nav-item {
                 margin: 0;
+                width: 100%;
             }
             
             .nav-link {
-                padding: 15px;
+                padding: 18px 20px;
                 border-bottom: 1px solid #333333;
+                display: block;
+                width: 100%;
+                text-align: center;
+                border-left: none;
+                border-right: none;
+            }
+            
+            .nav-link:last-child {
+                border-bottom: none;
             }
             
             .nav-toggle {
@@ -703,10 +744,7 @@ try {
                         <a href="admin.php" class="nav-link active">Administrace</a>
                     </li>
                     <li class="nav-item">
-                        <a href="stats_simple.php" class="nav-link">Statistiky</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="admin.php?logout=1" class="nav-link" onclick="return confirm('Opravdu se chcete odhlásit?')">Odhlásit se</a>
+                        <a href="stats.php" class="nav-link">Statistiky</a>
                     </li>
                 </ul>
                 <div class="nav-toggle">
@@ -722,7 +760,6 @@ try {
             <!-- Hlavní administrace -->
             <div class="header">
                 <h1>Administrace eventů</h1>
-                <a href="?logout=1" class="logout-btn">Odhlásit se</a>
             </div>
             
             <?php echo $message; ?>
@@ -832,8 +869,30 @@ try {
         if (navToggle) {
             navToggle.addEventListener('click', () => {
                 navMenu.classList.toggle('active');
+                navToggle.classList.toggle('active');
             });
         }
+        
+        // Close mobile menu when clicking on a link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (navMenu) {
+                    navMenu.classList.remove('active');
+                    navToggle.classList.remove('active');
+                }
+            });
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (navMenu && navToggle && 
+                !navMenu.contains(e.target) && 
+                !navToggle.contains(e.target) && 
+                navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            }
+        });
         
         // File preview function
         function previewFiles() {
