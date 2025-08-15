@@ -1,0 +1,46 @@
+# Konfigurační soubory s citlivými daty
+config.php
+
+# Upload adresář s uživatelskými soubory
+uploads/*
+!uploads/.gitkeep
+
+# Log soubory
+*.log
+error_log
+
+# Systémové soubory
+.DS_Store
+Thumbs.db
+
+# Dočasné soubory
+*.tmp
+*.bak
+*.swp
+*~
+
+# IDE soubory
+.vscode/
+.idea/
+*.sublime-*
+
+# Apache/webserver soubory
+.htaccess
+.user.ini
+
+# Závislosti (pokud budou)
+vendor/
+node_modules/
+
+# Cache soubory
+cache/
+tmp/
+
+# Databázové dumpy
+*.sql
+*.db
+*.sqlite
+
+# Backup soubory
+backup/
+*.backup
