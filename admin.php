@@ -729,6 +729,99 @@ try {
             line-height: 1.6;
         }
         
+        /* Autocomplete styly */
+        .participants-autocomplete {
+            position: relative;
+        }
+        
+        .participants-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            min-height: 40px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        
+        .participant-tag {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .participant-tag:hover {
+            background: #0056b3;
+        }
+        
+        .participant-tag .remove-tag {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0;
+            margin-left: 5px;
+        }
+        
+        .autocomplete-container {
+            position: relative;
+        }
+        
+        #participantInput {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: #f0f0f0;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item .highlight {
+            background: #ffeb3b;
+            font-weight: bold;
+        }
+        
         .event-actions {
             display: flex;
             gap: 10px;
@@ -974,10 +1067,19 @@ try {
                         </div>
                         
                         <div class="form-group">
-                            <label for="participants">Účastníci (jeden na řádek):</label>
-                            <textarea id="participants" name="participants" placeholder="Zadejte jména účastníků, každé na nový řádek...&#10;Jan Novák&#10;Marie Svobodová&#10;Petr Dvořák"><?php echo $editEvent ? htmlspecialchars($editEvent['participants_text']) : ''; ?></textarea>
-                            <div class="small-text">
-                                Zadejte jméno každého účastníka na samostatný řádek
+                            <label for="participants">Účastníci:</label>
+                            <div class="participants-autocomplete">
+                                <div class="participants-tags" id="participantsTags">
+                                    <!-- Zde se budou zobrazovat přidaná jména -->
+                                </div>
+                                <div class="autocomplete-container">
+                                    <input type="text" id="participantInput" placeholder="Začněte psát jméno...">
+                                    <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                                </div>
+                                <input type="hidden" id="participants" name="participants" value="<?php echo $editEvent ? htmlspecialchars($editEvent['participants_text']) : ''; ?>">
+                                <div class="small-text">
+                                    Začněte psát jméno a vyberte z nabídky nebo napište nové jméno
+                                </div>
                             </div>
                         </div>
                         
@@ -1235,6 +1337,215 @@ try {
                 closeAdminLightbox();
             }
         });
+        
+        // Autocomplete funkcionalita pro účastníky
+        let allParticipants = [];
+        let selectedParticipants = [];
+        let currentSuggestions = [];
+        let selectedIndex = -1;
+        
+        // Načtení existujících účastníků při načtení stránky
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllParticipants();
+            initializeAutocomplete();
+            
+            // Načtení existujících účastníků při editaci
+            const existingParticipants = document.getElementById('participants').value;
+            if (existingParticipants) {
+                const names = existingParticipants.split('\n').filter(name => name.trim());
+                names.forEach(name => addParticipant(name.trim()));
+            }
+        });
+        
+        // Načtení všech účastníků z databáze
+        async function loadAllParticipants() {
+            try {
+                const response = await fetch('get_participants.php');
+                const data = await response.json();
+                if (data.success) {
+                    allParticipants = data.participants;
+                }
+            } catch (error) {
+                console.error('Chyba při načítání účastníků:', error);
+            }
+        }
+        
+        // Inicializace autocomplete
+        function initializeAutocomplete() {
+            const input = document.getElementById('participantInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            
+            input.addEventListener('input', handleInput);
+            input.addEventListener('keydown', handleKeydown);
+            input.addEventListener('focus', handleFocus);
+            
+            // Skrytí dropdown při kliknutí mimo
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    hideDropdown();
+                }
+            });
+        }
+        
+        // Zpracování vstupu
+        function handleInput(e) {
+            const query = e.target.value.trim();
+            
+            if (query.length === 0) {
+                hideDropdown();
+                return;
+            }
+            
+            // Filtrování návrhů
+            currentSuggestions = allParticipants.filter(name => 
+                name.toLowerCase().includes(query.toLowerCase()) &&
+                !selectedParticipants.includes(name)
+            );
+            
+            showSuggestions(query);
+        }
+        
+        // Zpracování kláves
+        function handleKeydown(e) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+                    updateSelection();
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateSelection();
+                    break;
+                    
+                case 'Enter':
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+                        addParticipant(currentSuggestions[selectedIndex]);
+                    } else {
+                        const input = document.getElementById('participantInput');
+                        const value = input.value.trim();
+                        if (value) {
+                            addParticipant(value);
+                        }
+                    }
+                    break;
+                    
+                case 'Tab':
+                    if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+                        e.preventDefault();
+                        addParticipant(currentSuggestions[selectedIndex]);
+                    }
+                    break;
+            }
+        }
+        
+        // Zpracování focus
+        function handleFocus(e) {
+            const query = e.target.value.trim();
+            if (query.length > 0) {
+                handleInput(e);
+            }
+        }
+        
+        // Zobrazení návrhů
+        function showSuggestions(query) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const input = document.getElementById('participantInput');
+            
+            if (currentSuggestions.length === 0) {
+                hideDropdown();
+                return;
+            }
+            
+            dropdown.innerHTML = '';
+            selectedIndex = -1;
+            
+            currentSuggestions.forEach((suggestion, index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.textContent = suggestion;
+                
+                // Zvýraznění hledaného textu
+                const highlightedText = suggestion.replace(
+                    new RegExp(query, 'gi'),
+                    match => `<span class="highlight">${match}</span>`
+                );
+                item.innerHTML = highlightedText;
+                
+                item.addEventListener('click', () => {
+                    addParticipant(suggestion);
+                });
+                
+                dropdown.appendChild(item);
+            });
+            
+            dropdown.style.display = 'block';
+        }
+        
+        // Aktualizace výběru
+        function updateSelection() {
+            const items = document.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                item.classList.toggle('selected', index === selectedIndex);
+            });
+        }
+        
+        // Skrytí dropdown
+        function hideDropdown() {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            dropdown.style.display = 'none';
+            selectedIndex = -1;
+        }
+        
+        // Přidání účastníka
+        function addParticipant(name) {
+            if (!name.trim() || selectedParticipants.includes(name)) {
+                return;
+            }
+            
+            selectedParticipants.push(name);
+            updateParticipantsDisplay();
+            updateHiddenField();
+            
+            // Vyčištění input
+            const input = document.getElementById('participantInput');
+            input.value = '';
+            hideDropdown();
+        }
+        
+        // Odstranění účastníka
+        function removeParticipant(name) {
+            selectedParticipants = selectedParticipants.filter(p => p !== name);
+            updateParticipantsDisplay();
+            updateHiddenField();
+        }
+        
+        // Aktualizace zobrazení tagů
+        function updateParticipantsDisplay() {
+            const tagsContainer = document.getElementById('participantsTags');
+            tagsContainer.innerHTML = '';
+            
+            selectedParticipants.forEach(name => {
+                const tag = document.createElement('div');
+                tag.className = 'participant-tag';
+                tag.innerHTML = `
+                    ${name}
+                    <button type="button" class="remove-tag" onclick="removeParticipant('${name}')">&times;</button>
+                `;
+                tagsContainer.appendChild(tag);
+            });
+        }
+        
+        // Aktualizace skrytého pole
+        function updateHiddenField() {
+            const hiddenField = document.getElementById('participants');
+            hiddenField.value = selectedParticipants.join('\n');
+        }
     </script>
 </body>
 </html>
