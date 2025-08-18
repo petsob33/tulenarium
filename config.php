@@ -11,7 +11,28 @@ define('ADMIN_PASSWORD', 'admin123');
 
 // Konfigurace aplikace
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
-define('BASE_URL', '/pokusy/tulenarium/');
+
+// Automatická detekce BASE_URL
+function getBaseUrl() {
+    // Pokud nejsou dostupné $_SERVER proměnné (CLI), použijeme fallback
+    if (!isset($_SERVER['HTTP_HOST']) || !isset($_SERVER['SCRIPT_NAME'])) {
+        return '/pokusy/tulenarium/'; // Fallback pro CLI
+    }
+    
+    $scriptName = $_SERVER['SCRIPT_NAME'];
+    $pathInfo = pathinfo($scriptName);
+    $basePath = $pathInfo['dirname'];
+    
+    // Pokud je v root adresáři, vrátíme /
+    if ($basePath === '/') {
+        return '/';
+    }
+    
+    // Jinak vrátíme cestu s lomítkem na konci
+    return $basePath . '/';
+}
+
+define('BASE_URL', getBaseUrl());
 
 // Povolené typy souborů
 define('ALLOWED_TYPES', ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'webm']);
