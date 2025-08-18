@@ -87,9 +87,9 @@ try {
                 lightbox.id = 'eventLightboxFromThumbnail';
                 lightbox.className = 'event-lightbox';
                 lightbox.innerHTML = `
-                    <span class="lightbox-close" onclick="closeEventLightboxFromThumbnail()">&times;</span>
-                    <span class="lightbox-nav lightbox-prev" onclick="prevEventImageFromThumbnail()">&#8249;</span>
-                    <span class="lightbox-nav lightbox-next" onclick="nextEventImageFromThumbnail()">&#8250;</span>
+                    <button type="button" class="lightbox-close" onclick="closeEventLightboxFromThumbnail()">&times;</button>
+                    <button type="button" class="lightbox-nav lightbox-prev" onclick="prevEventImageFromThumbnail()">&#8249;</button>
+                    <button type="button" class="lightbox-nav lightbox-next" onclick="nextEventImageFromThumbnail()">&#8250;</button>
                     <div class="lightbox-info">
                         <span id="lightboxCounter">1 / ${images.length}</span>
                         <span id="lightboxTitle">${eventTitle}</span>
@@ -238,7 +238,7 @@ try {
                     cursor: pointer;
                 `;
                 lightbox.innerHTML = `
-                    <span class="lightbox-close" onclick="closeEventLightbox()" style="
+                    <button type="button" class="lightbox-close" onclick="closeEventLightbox()" style="
                         position: absolute;
                         top: 20px;
                         right: 30px;
@@ -254,8 +254,11 @@ try {
                         align-items: center;
                         justify-content: center;
                         transition: all 0.3s ease;
-                    ">&times;</span>
-                    <span class="lightbox-nav lightbox-prev" onclick="prevEventImage()" style="
+                        background: none;
+                        border: none;
+                        outline: none;
+                    ">&times;</button>
+                    <button type="button" class="lightbox-nav lightbox-prev" onclick="prevEventImage()" style="
                         position: absolute;
                         top: 50%;
                         left: 30px;
@@ -273,8 +276,11 @@ try {
                         justify-content: center;
                         transition: all 0.3s ease;
                         user-select: none;
-                    ">&#8249;</span>
-                    <span class="lightbox-nav lightbox-next" onclick="nextEventImage()" style="
+                        background: none;
+                        border: none;
+                        outline: none;
+                    ">&#8249;</button>
+                    <button type="button" class="lightbox-nav lightbox-next" onclick="nextEventImage()" style="
                         position: absolute;
                         top: 50%;
                         right: 30px;
@@ -292,7 +298,10 @@ try {
                         justify-content: center;
                         transition: all 0.3s ease;
                         user-select: none;
-                    ">&#8250;</span>
+                        background: none;
+                        border: none;
+                        outline: none;
+                    ">&#8250;</button>
                     <img id="eventLightboxImg" src="" alt="" style="
                         position: absolute;
                         top: 50%;
@@ -750,6 +759,9 @@ try {
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
+            background: none;
+            border: none;
+            outline: none;
         }
         
         .event-lightbox .lightbox-close:hover {
@@ -774,6 +786,9 @@ try {
             justify-content: center;
             transition: all 0.3s ease;
             user-select: none;
+            background: none;
+            border: none;
+            outline: none;
         }
         
         .event-lightbox .lightbox-nav:hover {
