@@ -378,6 +378,19 @@ try {
             transition: 0.3s;
         }
         
+        /* Hamburger menu animation */
+        .nav-toggle.active span:nth-child(1) {
+            transform: rotate(-45deg) translate(-5px, 6px);
+        }
+        
+        .nav-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .nav-toggle.active span:nth-child(3) {
+            transform: rotate(45deg) translate(-5px, -6px);
+        }
+        
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -877,7 +890,7 @@ try {
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar">f
+    <nav class="navbar">
         <div class="nav-container">
             <a href="index.php" class="nav-logo">Tulenarium</a>
             <ul class="nav-menu">
@@ -981,6 +994,89 @@ try {
         </div>
     </div>
 
+        // Zavření modalu při kliknutí mimo obsah
+        window.onclick = function(event) {
+            const modal = document.getElementById('eventModal');
+            if (event.target === modal) {
+                closeEventDetail();
+            }
+        }
+        
+        // Zavření modalu klávesou ESC a navigace v lightboxu
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeEventDetail();
+                closeEventLightboxFromThumbnail();
+            }
+            
+            // Navigace v lightboxu z náhledové fotky
+            const lightbox = document.getElementById('eventLightboxFromThumbnail');
+            if (lightbox && lightbox.style.display === 'block') {
+                switch(event.key) {
+                    case 'ArrowLeft':
+                        prevEventImageFromThumbnail();
+                        break;
+                    case 'ArrowRight':
+                        nextEventImageFromThumbnail();
+                        break;
+                }
+            }
+            
+            // Navigace v lightboxu z event.php
+            const eventLightbox = document.getElementById('eventLightbox');
+            if (eventLightbox && eventLightbox.style.display === 'block') {
+                switch(event.key) {
+                    case 'ArrowLeft':
+                        prevEventImage();
+                        break;
+                    case 'ArrowRight':
+                        nextEventImage();
+                        break;
+                }
+            }
+        });
+        
+        // Mobile navigation toggle
+        const navToggle = document.querySelector('.nav-toggle');
+        const navMenu = document.querySelector('.nav-menu');
+        
+        if (navToggle) {
+            navToggle.addEventListener('click', () => {
+                navMenu.classList.toggle('active');
+                navToggle.classList.toggle('active');
+            });
+        }
+        
+        // Close mobile menu when clicking on a link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (navMenu) {
+                    navMenu.classList.remove('active');
+                    navToggle.classList.remove('active');
+                }
+            });
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (navMenu && navToggle && 
+                !navMenu.contains(e.target) && 
+                !navToggle.contains(e.target) && 
+                navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            }
+        });
+        
+        // Smooth scroll k eventu při načtení stránky s hash
+        if (window.location.hash) {
+            const element = document.querySelector(window.location.hash);
+            if (element) {
+                setTimeout(() => {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            }
+        }
     </script>
 </body>
 </html>
