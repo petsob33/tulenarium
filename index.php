@@ -28,6 +28,263 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tulenarium - Přehled eventů</title>
+    <script>
+        // Globální proměnné pro lightbox
+        window.currentEventImages = [];
+        window.currentImageIndex = 0;
+        
+        // Funkce pro otevírání detailu eventu
+        function openEventDetail(eventId) {
+            const modal = document.getElementById('eventModal');
+            const modalBody = document.getElementById('modalBody');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="loading">Načítání...</div>';
+            modalTitle.textContent = 'Detail eventu';
+            
+            // Načtení detailu přes AJAX
+            fetch('event.php?id=' + eventId)
+                .then(response => response.text())
+                .then(data => {
+                    modalBody.innerHTML = data;
+                    
+                    // Po načtení obsahu modalu nastavíme lightbox funkce
+                    if (typeof window.currentEventImages !== 'undefined' && window.currentEventImages.length > 0) {
+                        // Lightbox funkce jsou už definované v event.php
+                        console.log('Lightbox funkce jsou připraveny pro', window.currentEventImages.length, 'obrázků');
+                    }
+                })
+                .catch(error => {
+                    modalBody.innerHTML = '<div class="error">Chyba při načítání detailu eventu.</div>';
+                });
+        }
+        
+        function closeEventDetail() {
+            document.getElementById('eventModal').style.display = 'none';
+        }
+        
+        // Lightbox pro náhledové fotky s navigací mezi všemi fotkami
+        function openEventLightboxFromThumbnail(eventId, images, eventTitle) {
+            event.stopPropagation(); // Zabrání otevření modalu
+            
+            if (!images || images.length === 0) {
+                console.error('Žádné fotky k zobrazení');
+                return;
+            }
+            
+            // Nastavení globálních proměnných pro lightbox
+            window.currentEventImages = images;
+            window.currentImageIndex = 0;
+            
+            // Vytvoření lightboxu pro fotky eventu
+            let lightbox = document.getElementById('eventLightboxFromThumbnail');
+            if (!lightbox) {
+                lightbox = document.createElement('div');
+                lightbox.id = 'eventLightboxFromThumbnail';
+                lightbox.className = 'event-lightbox';
+                lightbox.innerHTML = `
+                    <span class="lightbox-close" onclick="closeEventLightboxFromThumbnail()">&times;</span>
+                    <span class="lightbox-nav lightbox-prev" onclick="prevEventImageFromThumbnail()">&#8249;</span>
+                    <span class="lightbox-nav lightbox-next" onclick="nextEventImageFromThumbnail()">&#8250;</span>
+                    <div class="lightbox-info">
+                        <span id="lightboxCounter">1 / ${images.length}</span>
+                        <span id="lightboxTitle">${eventTitle}</span>
+                    </div>
+                    <img id="eventLightboxImgFromThumbnail" src="" alt="">
+                `;
+                lightbox.onclick = function(e) {
+                    if (e.target === lightbox) {
+                        closeEventLightboxFromThumbnail();
+                    }
+                };
+                document.body.appendChild(lightbox);
+            }
+            
+            // Zobrazení první fotky
+            const img = document.getElementById('eventLightboxImgFromThumbnail');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + images[0].filename;
+            img.alt = images[0].original_name;
+            img.onclick = function(e) { e.stopPropagation(); };
+            
+            // Aktualizace počítadla
+            const counter = document.getElementById('lightboxCounter');
+            if (counter) counter.textContent = `1 / ${images.length}`;
+            
+            lightbox.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeEventLightboxFromThumbnail() {
+            const lightbox = document.getElementById('eventLightboxFromThumbnail');
+            if (lightbox) {
+                lightbox.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function nextEventImageFromThumbnail() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+            updateEventLightboxImage();
+        }
+        
+        function prevEventImageFromThumbnail() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+            updateEventLightboxImage();
+        }
+        
+        function updateEventLightboxImage() {
+            const img = document.getElementById('eventLightboxImgFromThumbnail');
+            const counter = document.getElementById('lightboxCounter');
+            
+            if (img && window.currentEventImages && window.currentEventImages[window.currentImageIndex]) {
+                img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+                img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+                
+                if (counter) {
+                    counter.textContent = `${window.currentImageIndex + 1} / ${window.currentEventImages.length}`;
+                }
+            }
+        }
+        
+        // Funkce pro lightbox z event.php
+        function closeEventLightbox() {
+            const lightbox = document.getElementById('eventLightbox');
+            if (lightbox) {
+                lightbox.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function nextEventImage() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+        }
+        
+        function prevEventImage() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+        }
+        
+        // Globální funkce pro lightbox z event.php
+        window.openEventLightbox = function(index) {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) {
+                console.error('No images available for lightbox');
+                return;
+            }
+            
+            window.currentImageIndex = index;
+            
+            // Vytvoření lightboxu pokud neexistuje
+            let lightbox = document.getElementById('eventLightbox');
+            if (!lightbox) {
+                lightbox = document.createElement('div');
+                lightbox.id = 'eventLightbox';
+                lightbox.className = 'event-lightbox';
+                lightbox.style.cssText = `
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.95);
+                    z-index: 3000;
+                    cursor: pointer;
+                `;
+                lightbox.innerHTML = `
+                    <span class="lightbox-close" onclick="closeEventLightbox()" style="
+                        position: absolute;
+                        top: 20px;
+                        right: 30px;
+                        color: white;
+                        font-size: 3rem;
+                        font-weight: bold;
+                        cursor: pointer;
+                        z-index: 3001;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s ease;
+                    ">&times;</span>
+                    <span class="lightbox-nav lightbox-prev" onclick="prevEventImage()" style="
+                        position: absolute;
+                        top: 50%;
+                        left: 30px;
+                        transform: translateY(-50%);
+                        color: white;
+                        font-size: 3rem;
+                        font-weight: bold;
+                        cursor: pointer;
+                        z-index: 3001;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s ease;
+                        user-select: none;
+                    ">&#8249;</span>
+                    <span class="lightbox-nav lightbox-next" onclick="nextEventImage()" style="
+                        position: absolute;
+                        top: 50%;
+                        right: 30px;
+                        transform: translateY(-50%);
+                        color: white;
+                        font-size: 3rem;
+                        font-weight: bold;
+                        cursor: pointer;
+                        z-index: 3001;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s ease;
+                        user-select: none;
+                    ">&#8250;</span>
+                    <img id="eventLightboxImg" src="" alt="" style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        max-width: 90%;
+                        max-height: 90%;
+                        border-radius: 10px;
+                        box-shadow: 0 0 50px rgba(0,0,0,0.5);
+                    ">
+                `;
+                lightbox.onclick = function(e) {
+                    if (e.target === lightbox) {
+                        closeEventLightbox();
+                    }
+                };
+                document.body.appendChild(lightbox);
+            }
+            
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+            img.onclick = function(e) { e.stopPropagation(); };
+            
+            lightbox.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+    </script>
+    
     <style>
         * {
             margin: 0;
@@ -241,6 +498,33 @@ try {
             object-fit: cover;
             border-radius: 10px;
             margin-bottom: 15px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        
+        .event-thumbnail:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        
+        .event-thumbnail::after {
+            content: '🔍';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 8px;
+            border-radius: 50%;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .event-thumbnail:hover::after {
+            opacity: 1;
         }
         
         .event-title {
@@ -449,6 +733,33 @@ try {
             right: 30px;
         }
         
+        .lightbox-info {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            color: white;
+            z-index: 3001;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .lightbox-info span {
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        #lightboxCounter {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        
+        #lightboxTitle {
+            opacity: 0.9;
+            font-size: 0.8rem;
+        }
+        
         @media (max-width: 768px) {
             .navbar {
                 position: relative;
@@ -543,12 +854,27 @@ try {
                 top: 10px;
                 right: 10px;
             }
+            
+            .lightbox-info {
+                top: 10px;
+                left: 10px;
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            
+            #lightboxCounter {
+                font-size: 0.9rem;
+            }
+            
+            #lightboxTitle {
+                font-size: 0.7rem;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar">
+    <nav class="navbar">f
         <div class="nav-container">
             <a href="index.php" class="nav-logo">Tulenarium</a>
             <ul class="nav-menu">
@@ -597,9 +923,24 @@ try {
                     <div class="event-item" onclick="openEventDetail(<?php echo $event['id']; ?>)" id="event-<?php echo $event['id']; ?>">
                         <div class="event-content">
                             <?php if (!empty($event['thumbnail'])): ?>
+                                <?php 
+                                // Načtení všech fotek z eventu pro lightbox
+                                $eventImages = [];
+                                if (!empty($event['media'])) {
+                                    $media = json_decode($event['media'], true);
+                                    if (is_array($media)) {
+                                        foreach ($media as $file) {
+                                            if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])) {
+                                                $eventImages[] = $file;
+                                            }
+                                        }
+                                    }
+                                }
+                                ?>
                                 <img src="<?php echo getFileUrl($event['thumbnail']); ?>" 
                                      alt="<?php echo htmlspecialchars($event['title']); ?>" 
-                                     class="event-thumbnail">
+                                     class="event-thumbnail"
+                                     onclick="event.stopPropagation(); openEventLightboxFromThumbnail(<?php echo $event['id']; ?>, <?php echo htmlspecialchars(json_encode($eventImages)); ?>, '<?php echo htmlspecialchars($event['title']); ?>')">
                             <?php endif; ?>
                             
                             <div class="event-title"><?php echo htmlspecialchars($event['title']); ?></div>
@@ -636,51 +977,121 @@ try {
             </div>
         </div>
     </div>
-    
-    <script>
-        function openEventDetail(eventId) {
-            const modal = document.getElementById('eventModal');
-            const modalBody = document.getElementById('modalBody');
-            const modalTitle = document.getElementById('modalTitle');
-            
-            modal.style.display = 'block';
-            modalBody.innerHTML = '<div class="loading">Načítání...</div>';
-            modalTitle.textContent = 'Detail eventu';
-            
-            // Načtení detailu přes AJAX
-            fetch('event.php?id=' + eventId)
-                .then(response => response.text())
-                .then(data => {
-                    modalBody.innerHTML = data;
-                })
-                .catch(error => {
-                    modalBody.innerHTML = '<div class="error">Chyba při načítání detailu eventu.</div>';
-                });
-        }
-        
-        function closeEventDetail() {
-            document.getElementById('eventModal').style.display = 'none';
-        }
-        
-        // Zavření modalu při kliknutí mimo obsah
-        window.onclick = function(event) {
-            const modal = document.getElementById('eventModal');
-            if (event.target === modal) {
-                closeEventDetail();
-            }
-        }
-        
-        // Zavření modalu klávesou ESC
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeEventDetail();
-            }
-        });
 
-        // Globální lightbox funkce pro event obrázky
-        window.currentEventImages = [];
-        window.currentImageIndex = 0;
         
+
+        
+        // Lightbox pro náhledové fotky s navigací mezi všemi fotkami
+        function openEventLightboxFromThumbnail(eventId, images, eventTitle) {
+            event.stopPropagation(); // Zabrání otevření modalu
+            
+            if (!images || images.length === 0) {
+                console.error('Žádné fotky k zobrazení');
+                return;
+            }
+            
+            // Nastavení globálních proměnných pro lightbox
+            window.currentEventImages = images;
+            window.currentImageIndex = 0;
+            
+            // Vytvoření lightboxu pro fotky eventu
+            let lightbox = document.getElementById('eventLightboxFromThumbnail');
+            if (!lightbox) {
+                lightbox = document.createElement('div');
+                lightbox.id = 'eventLightboxFromThumbnail';
+                lightbox.className = 'event-lightbox';
+                lightbox.innerHTML = `
+                    <span class="lightbox-close" onclick="closeEventLightboxFromThumbnail()">&times;</span>
+                    <span class="lightbox-nav lightbox-prev" onclick="prevEventImageFromThumbnail()">&#8249;</span>
+                    <span class="lightbox-nav lightbox-next" onclick="nextEventImageFromThumbnail()">&#8250;</span>
+                    <div class="lightbox-info">
+                        <span id="lightboxCounter">1 / ${images.length}</span>
+                        <span id="lightboxTitle">${eventTitle}</span>
+                    </div>
+                    <img id="eventLightboxImgFromThumbnail" src="" alt="">
+                `;
+                lightbox.onclick = function(e) {
+                    if (e.target === lightbox) {
+                        closeEventLightboxFromThumbnail();
+                    }
+                };
+                document.body.appendChild(lightbox);
+            }
+            
+            // Zobrazení první fotky
+            const img = document.getElementById('eventLightboxImgFromThumbnail');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + images[0].filename;
+            img.alt = images[0].original_name;
+            img.onclick = function(e) { e.stopPropagation(); };
+            
+            // Aktualizace počítadla
+            const counter = document.getElementById('lightboxCounter');
+            if (counter) counter.textContent = `1 / ${images.length}`;
+            
+            lightbox.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeEventLightboxFromThumbnail() {
+            const lightbox = document.getElementById('eventLightboxFromThumbnail');
+            if (lightbox) {
+                lightbox.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function nextEventImageFromThumbnail() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+            updateEventLightboxImage();
+        }
+        
+        function prevEventImageFromThumbnail() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+            updateEventLightboxImage();
+        }
+        
+        function updateEventLightboxImage() {
+            const img = document.getElementById('eventLightboxImgFromThumbnail');
+            const counter = document.getElementById('lightboxCounter');
+            
+            if (img && window.currentEventImages && window.currentEventImages[window.currentImageIndex]) {
+                img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+                img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+                
+                if (counter) {
+                    counter.textContent = `${window.currentImageIndex + 1} / ${window.currentEventImages.length}`;
+                }
+            }
+        }
+        
+        // Funkce pro lightbox z event.php
+        function closeEventLightbox() {
+            const lightbox = document.getElementById('eventLightbox');
+            if (lightbox) {
+                lightbox.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function nextEventImage() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+        }
+        
+        function prevEventImage() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+        }
+
+        // Globální funkce pro lightbox z event.php
         window.openEventLightbox = function(index) {
             if (!window.currentEventImages || window.currentEventImages.length === 0) {
                 console.error('No images available for lightbox');
@@ -782,7 +1193,7 @@ try {
             }
             
             const img = document.getElementById('eventLightboxImg');
-            img.src = '/pokusy/tulenarium/uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
             img.alt = window.currentEventImages[window.currentImageIndex].original_name;
             img.onclick = function(e) { e.stopPropagation(); };
             
@@ -790,38 +1201,38 @@ try {
             document.body.style.overflow = 'hidden';
         }
         
-        window.closeEventLightbox = function() {
-            const lightbox = document.getElementById('eventLightbox');
-            if (lightbox) {
-                lightbox.style.display = 'none';
-                document.body.style.overflow = 'auto';
+        // Zavření modalu při kliknutí mimo obsah
+        window.onclick = function(event) {
+            const modal = document.getElementById('eventModal');
+            if (event.target === modal) {
+                closeEventDetail();
             }
         }
         
-        window.nextEventImage = function() {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
-            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
-            const img = document.getElementById('eventLightboxImg');
-            img.src = '/pokusy/tulenarium/uploads/' + window.currentEventImages[window.currentImageIndex].filename;
-            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
-        }
-        
-        window.prevEventImage = function() {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
-            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
-            const img = document.getElementById('eventLightboxImg');
-            img.src = '/pokusy/tulenarium/uploads/' + window.currentEventImages[window.currentImageIndex].filename;
-            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
-        }
-        
-        // Navigace klávesnicí pro lightbox
-        document.addEventListener('keydown', function(e) {
-            const lightbox = document.getElementById('eventLightbox');
+        // Zavření modalu klávesou ESC a navigace v lightboxu
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeEventDetail();
+                closeEventLightboxFromThumbnail();
+            }
+            
+            // Navigace v lightboxu z náhledové fotky
+            const lightbox = document.getElementById('eventLightboxFromThumbnail');
             if (lightbox && lightbox.style.display === 'block') {
-                switch(e.key) {
-                    case 'Escape':
-                        closeEventLightbox();
+                switch(event.key) {
+                    case 'ArrowLeft':
+                        prevEventImageFromThumbnail();
                         break;
+                    case 'ArrowRight':
+                        nextEventImageFromThumbnail();
+                        break;
+                }
+            }
+            
+            // Navigace v lightboxu z event.php
+            const eventLightbox = document.getElementById('eventLightbox');
+            if (eventLightbox && eventLightbox.style.display === 'block') {
+                switch(event.key) {
                     case 'ArrowLeft':
                         prevEventImage();
                         break;
@@ -839,6 +1250,7 @@ try {
         if (navToggle) {
             navToggle.addEventListener('click', () => {
                 navMenu.classList.toggle('active');
+                navToggle.classList.toggle('active');
             });
         }
         
@@ -847,8 +1259,20 @@ try {
             link.addEventListener('click', () => {
                 if (navMenu) {
                     navMenu.classList.remove('active');
+                    navToggle.classList.remove('active');
                 }
             });
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (navMenu && navToggle && 
+                !navMenu.contains(e.target) && 
+                !navToggle.contains(e.target) && 
+                navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            }
         });
         
         // Smooth scroll k eventu při načtení stránky s hash
@@ -863,3 +1287,4 @@ try {
     </script>
 </body>
 </html>
+

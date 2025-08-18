@@ -174,3 +174,4 @@ Pro hlášení chyb nebo návrhy vytvořte issue v repository projektu.
 
 Tento projekt je poskytován "jak je" bez jakékoli záruky.
 
+

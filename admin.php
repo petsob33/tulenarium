@@ -40,7 +40,27 @@ if (isset($_POST['add_event']) || isset($_POST['edit_event'])) {
         try {
             $db = getDB();
             
-            // Upload souborů
+            // Zpracování existujících médií při úpravě
+            $existingMedia = [];
+            if ($isEdit && !empty($_POST['existing_media'])) {
+                $existingMedia = json_decode($_POST['existing_media'], true) ?: [];
+            }
+            
+            // Zpracování odstraněných médií
+            $removedMedia = [];
+            if (!empty($_POST['removeMedia'])) {
+                $removedMedia = array_map('intval', explode(',', $_POST['removeMedia']));
+            }
+            
+            // Filtrování existujících médií (odstranění smazaných)
+            $filteredExistingMedia = [];
+            foreach ($existingMedia as $index => $media) {
+                if (!in_array($index, $removedMedia)) {
+                    $filteredExistingMedia[] = $media;
+                }
+            }
+            
+            // Upload nových souborů
             $uploadResult = ['files' => [], 'errors' => []];
             if (!empty($_FILES['media']['tmp_name'][0])) {
                 $uploadResult = uploadFiles($_FILES['media']);
@@ -54,13 +74,25 @@ if (isset($_POST['add_event']) || isset($_POST['edit_event'])) {
                 $message = displayError('Chyby při uploadu souborů:<br>' . implode('<br>', $uploadErrors));
             }
             
+            // Kombinace existujících a nových médií
+            $allMedia = array_merge($filteredExistingMedia, $uploadedFiles);
+            
             // Určení náhledového obrázku
             $thumbnail = '';
-            if (!empty($uploadedFiles) && isset($uploadedFiles[$thumbnail_index])) {
-                $thumbnail = $uploadedFiles[$thumbnail_index]['filename'];
-            } elseif (!empty($uploadedFiles)) {
-                // Pokud není vybran náhled, použije se první obrázek
-                foreach ($uploadedFiles as $file) {
+            $thumbnailValue = $_POST['thumbnail'] ?? '';
+            
+            if (strpos($thumbnailValue, 'existing_') === 0) {
+                // Náhled z existujících médií
+                $existingIndex = (int)str_replace('existing_', '', $thumbnailValue);
+                if (isset($filteredExistingMedia[$existingIndex])) {
+                    $thumbnail = $filteredExistingMedia[$existingIndex]['filename'];
+                }
+            } elseif (is_numeric($thumbnailValue) && isset($uploadedFiles[$thumbnailValue])) {
+                // Náhled z nových souborů
+                $thumbnail = $uploadedFiles[$thumbnailValue]['filename'];
+            } elseif (!empty($allMedia)) {
+                // Automatický výběr prvního obrázku
+                foreach ($allMedia as $file) {
                     if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])) {
                         $thumbnail = $file['filename'];
                         break;
@@ -78,7 +110,7 @@ if (isset($_POST['add_event']) || isset($_POST['edit_event'])) {
                     $event_date,
                     $people_count,
                     $location,
-                    json_encode($uploadedFiles),
+                    json_encode($allMedia),
                     $thumbnail,
                     $eventId
                 ]);
@@ -96,7 +128,7 @@ if (isset($_POST['add_event']) || isset($_POST['edit_event'])) {
                     $event_date,
                     $people_count,
                     $location,
-                    json_encode($uploadedFiles),
+                    json_encode($allMedia),
                     $thumbnail
                 ]);
                 $event_id = $db->lastInsertId();
@@ -516,6 +548,148 @@ try {
             color: #cccccc;
         }
         
+        .existing-media {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .existing-media h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1rem;
+        }
+        
+        .existing-media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .existing-media-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .existing-media-item:hover {
+            border-color: #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .existing-media-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .existing-media-item img:hover {
+            transform: scale(1.05);
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            height: 120px;
+            background: #333;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .video-placeholder small {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            text-align: center;
+            padding: 0 5px;
+        }
+        
+        .media-controls {
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+        
+        .media-controls label {
+            font-size: 0.85rem;
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-remove {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s ease;
+        }
+        
+        .btn-remove:hover {
+            background: #c82333;
+        }
+        
+        /* Lightbox pro admin */
+        .admin-lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 3000;
+            cursor: pointer;
+        }
+        
+        .admin-lightbox img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        
+        .admin-lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 3rem;
+            cursor: pointer;
+            background: rgba(0,0,0,0.5);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .admin-lightbox-close:hover {
+            background: rgba(0,0,0,0.8);
+            transform: scale(1.1);
+        }
+        
         .event-item {
             border: 2px solid #e0e0e0;
             border-radius: 15px;
@@ -778,6 +952,9 @@ try {
                     <form method="post" enctype="multipart/form-data" id="eventForm">
                         <?php if ($editEvent): ?>
                             <input type="hidden" name="event_id" value="<?php echo $editEvent['id']; ?>">
+                            <?php if (!empty($editEvent['media'])): ?>
+                                <input type="hidden" name="existing_media" value="<?php echo htmlspecialchars($editEvent['media']); ?>">
+                            <?php endif; ?>
                         <?php endif; ?>
                         <div class="form-group">
                             <label for="title">Název eventu:</label>
@@ -815,9 +992,48 @@ try {
                             <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo MAX_FILE_SIZE; ?>">
                             <input type="file" id="media" name="media[]" multiple accept="image/*,video/*" onchange="previewFiles()">
                             <div class="small-text">
-                                Maximální velikost souboru: <?php echo number_format(MAX_FILE_SIZE / 1024 / 1024, 0); ?> MB
+                                Maximální velikost souboru: <?php echo number_format(MAX_FILE_SIZE / 1024 / 1024, 0); ?> MB<br>
+                                <strong>📸 Fotky budou automaticky komprimovány na ~400 KB pro optimalizaci</strong>
                             </div>
                             <div id="filePreview" class="file-preview"></div>
+                            
+                            <?php if ($editEvent && !empty($editEvent['media'])): ?>
+                                <div class="existing-media">
+                                    <h4>Existující média:</h4>
+                                    <div class="existing-media-grid">
+                                        <?php 
+                                        $existingMedia = json_decode($editEvent['media'], true);
+                                        if (is_array($existingMedia)):
+                                            foreach ($existingMedia as $index => $file): 
+                                        ?>
+                                            <div class="existing-media-item">
+                                                <?php if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])): ?>
+                                                    <img src="<?php echo getFileUrl($file['filename']); ?>" 
+                                                         alt="<?php echo htmlspecialchars($file['original_name']); ?>"
+                                                         onclick="openLightbox('<?php echo getFileUrl($file['filename']); ?>', '<?php echo htmlspecialchars($file['original_name']); ?>')">
+                                                <?php else: ?>
+                                                    <div class="video-placeholder">
+                                                        <span>🎥</span>
+                                                        <small><?php echo htmlspecialchars($file['original_name']); ?></small>
+                                                    </div>
+                                                <?php endif; ?>
+                                                
+                                                <div class="media-controls">
+                                                    <label>
+                                                        <input type="radio" name="thumbnail" value="existing_<?php echo $index; ?>" 
+                                                               <?php echo ($editEvent['thumbnail'] === $file['filename']) ? 'checked' : ''; ?>>
+                                                        Náhled
+                                                    </label>
+                                                    <button type="button" class="btn-remove" onclick="removeExistingMedia(<?php echo $index; ?>)">🗑️</button>
+                                                </div>
+                                            </div>
+                                        <?php 
+                                            endforeach;
+                                        endif;
+                                        ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         
                         <button type="submit" name="<?php echo $editEvent ? 'edit_event' : 'add_event'; ?>" class="btn btn-full">
@@ -843,6 +1059,27 @@ try {
                                     <strong>Datum:</strong> <?php echo formatDate($event['event_date']); ?> |
                                     <strong>Účastníci:</strong> <?php echo $event['actual_participants_count']; ?> |
                                     <strong>Místo:</strong> <?php echo htmlspecialchars($event['location']); ?>
+                                    <?php if (!empty($event['media'])): ?>
+                                        | <strong>Média:</strong> 
+                                        <?php 
+                                        $media = json_decode($event['media'], true);
+                                        if (is_array($media)) {
+                                            $imageCount = 0;
+                                            $videoCount = 0;
+                                            $totalSize = 0;
+                                            foreach ($media as $file) {
+                                                if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])) {
+                                                    $imageCount++;
+                                                } else {
+                                                    $videoCount++;
+                                                }
+                                                $totalSize += $file['size'];
+                                            }
+                                            echo $imageCount . ' fotek, ' . $videoCount . ' videí';
+                                            echo ' (' . number_format($totalSize / 1024, 0) . ' KB)';
+                                        }
+                                        ?>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="event-description">
                                     <?php echo nl2br(htmlspecialchars(truncateText($event['description'], 150))); ?>
@@ -860,6 +1097,12 @@ try {
             </div>
             
             </div>
+
+    <!-- Lightbox pro admin -->
+    <div id="adminLightbox" class="admin-lightbox" onclick="closeAdminLightbox()">
+        <span class="admin-lightbox-close" onclick="closeAdminLightbox()">&times;</span>
+        <img id="adminLightboxImg" src="" alt="">
+    </div>
 
     <script>
         // Mobile navigation toggle
@@ -942,6 +1185,55 @@ try {
                     navMenu.classList.remove('active');
                 }
             });
+        });
+        
+        // Lightbox funkce pro admin
+        function openLightbox(imageSrc, imageAlt) {
+            const lightbox = document.getElementById('adminLightbox');
+            const img = document.getElementById('adminLightboxImg');
+            
+            img.src = imageSrc;
+            img.alt = imageAlt;
+            lightbox.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeAdminLightbox() {
+            const lightbox = document.getElementById('adminLightbox');
+            lightbox.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Funkce pro odstranění existujícího média
+        function removeExistingMedia(index) {
+            if (confirm('Opravdu chcete odstranit toto médium?')) {
+                // Přidáme skryté pole pro označení odstraněných médií
+                let removeField = document.getElementById('removeMedia');
+                if (!removeField) {
+                    removeField = document.createElement('input');
+                    removeField.type = 'hidden';
+                    removeField.id = 'removeMedia';
+                    removeField.name = 'removeMedia';
+                    document.getElementById('eventForm').appendChild(removeField);
+                }
+                
+                const currentRemoved = removeField.value ? removeField.value.split(',') : [];
+                currentRemoved.push(index);
+                removeField.value = currentRemoved.join(',');
+                
+                // Skryjeme element
+                const mediaItem = event.target.closest('.existing-media-item');
+                if (mediaItem) {
+                    mediaItem.style.display = 'none';
+                }
+            }
+        }
+        
+        // ESC klávesa pro zavření lightboxu
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAdminLightbox();
+            }
         });
     </script>
 </body>

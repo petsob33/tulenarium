@@ -68,6 +68,110 @@ function formatDate($date) {
     return date('d.m.Y', strtotime($date));
 }
 
+// Funkce pro kompresi obrázku
+function compressImage($sourcePath, $targetPath, $quality = 85, $maxSizeKB = 400) {
+    $imageInfo = getimagesize($sourcePath);
+    if (!$imageInfo) {
+        return false;
+    }
+    
+    $width = $imageInfo[0];
+    $height = $imageInfo[1];
+    $type = $imageInfo[2];
+    
+    // Načtení obrázku podle typu
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $image = imagecreatefromjpeg($sourcePath);
+            break;
+        case IMAGETYPE_PNG:
+            $image = imagecreatefrompng($sourcePath);
+            break;
+        case IMAGETYPE_GIF:
+            $image = imagecreatefromgif($sourcePath);
+            break;
+        default:
+            return false;
+    }
+    
+    if (!$image) {
+        return false;
+    }
+    
+    // Výpočet nových rozměrů pro zachování poměru stran
+    $maxWidth = 1920;
+    $maxHeight = 1080;
+    
+    if ($width > $maxWidth || $height > $maxHeight) {
+        $ratio = min($maxWidth / $width, $maxHeight / $height);
+        $newWidth = round($width * $ratio);
+        $newHeight = round($height * $ratio);
+        
+        $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+        
+        // Zachování průhlednosti pro PNG
+        if ($type == IMAGETYPE_PNG) {
+            imagealphablending($resizedImage, false);
+            imagesavealpha($resizedImage, true);
+            $transparent = imagecolorallocatealpha($resizedImage, 255, 255, 255, 127);
+            imagefilledrectangle($resizedImage, 0, 0, $newWidth, $newHeight, $transparent);
+        }
+        
+        imagecopyresampled($resizedImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        $image = $resizedImage;
+        $width = $newWidth;
+        $height = $newHeight;
+    }
+    
+    // Uložení s postupným snižováním kvality, dokud není dosažena požadovaná velikost
+    $attempts = 0;
+    $maxAttempts = 10;
+    $currentQuality = $quality;
+    
+    do {
+        // Dočasný soubor pro testování velikosti
+        $tempPath = $targetPath . '.tmp';
+        
+        switch ($type) {
+            case IMAGETYPE_JPEG:
+                imagejpeg($image, $tempPath, $currentQuality);
+                break;
+            case IMAGETYPE_PNG:
+                // Pro PNG používáme kompresi 0-9
+                $pngQuality = round((100 - $currentQuality) / 11.11); // Převod na PNG kompresi
+                $pngQuality = max(0, min(9, $pngQuality));
+                imagepng($image, $tempPath, $pngQuality);
+                break;
+            case IMAGETYPE_GIF:
+                imagegif($image, $tempPath);
+                break;
+        }
+        
+        $fileSize = filesize($tempPath);
+        $fileSizeKB = $fileSize / 1024;
+        
+        if ($fileSizeKB <= $maxSizeKB || $currentQuality <= 10) {
+            // Dosáhli jsme požadované velikosti nebo minimální kvality
+            rename($tempPath, $targetPath);
+            imagedestroy($image);
+            return $fileSize;
+        }
+        
+        // Snížení kvality pro další pokus
+        $currentQuality -= 10;
+        $attempts++;
+        
+    } while ($attempts < $maxAttempts);
+    
+    // Pokud se nepodařilo dosáhnout požadované velikosti, použijeme poslední verzi
+    if (file_exists($tempPath)) {
+        rename($tempPath, $targetPath);
+    }
+    
+    imagedestroy($image);
+    return filesize($targetPath);
+}
+
 // Funkce pro nahrání souborů
 function uploadFiles($files) {
     $uploadedFiles = [];
@@ -122,16 +226,32 @@ function uploadFiles($files) {
         $uniqueName = uniqid() . '_' . $fileName;
         $uploadPath = UPLOAD_DIR . $uniqueName;
         
-        // Přesun souboru
-        if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-            $uploadedFiles[] = [
-                'filename' => $uniqueName,
-                'original_name' => $fileName,
-                'type' => $fileType,
-                'size' => $fileSize
-            ];
+        // Komprese obrázků
+        if (in_array($fileType, ['jpg', 'jpeg', 'png', 'gif'])) {
+            $compressedSize = compressImage($file['tmp_name'], $uploadPath, 85, 400);
+            if ($compressedSize !== false) {
+                $uploadedFiles[] = [
+                    'filename' => $uniqueName,
+                    'original_name' => $fileName,
+                    'type' => $fileType,
+                    'size' => $compressedSize,
+                    'original_size' => $fileSize
+                ];
+            } else {
+                $errors[] = 'Nepodařilo se komprimovat obrázek ' . $fileName;
+            }
         } else {
-            $errors[] = 'Nepodařilo se nahrát soubor ' . $fileName;
+            // Pro videa a jiné soubory použijeme původní upload
+            if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                $uploadedFiles[] = [
+                    'filename' => $uniqueName,
+                    'original_name' => $fileName,
+                    'type' => $fileType,
+                    'size' => $fileSize
+                ];
+            } else {
+                $errors[] = 'Nepodařilo se nahrát soubor ' . $fileName;
+            }
         }
     }
     

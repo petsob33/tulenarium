@@ -419,8 +419,82 @@ try {
 <?php if (!empty($images)): ?>
     <script>
         // Nastavení obrázků pro lightbox
-        if (typeof window.currentEventImages !== 'undefined') {
-            window.currentEventImages = <?php echo json_encode($images); ?>;
+        window.currentEventImages = <?php echo json_encode($images); ?>;
+        window.currentImageIndex = 0;
+        
+        // Vylepšená funkce pro otevření lightboxu
+        function openEventLightbox(index) {
+            window.currentImageIndex = index;
+            
+            // Vytvoření lightboxu pokud neexistuje
+            let lightbox = document.getElementById('eventLightbox');
+            if (!lightbox) {
+                lightbox = document.createElement('div');
+                lightbox.id = 'eventLightbox';
+                lightbox.className = 'lightbox';
+                lightbox.innerHTML = `
+                    <span class="lightbox-close" onclick="closeEventLightbox()">&times;</span>
+                    <span class="lightbox-nav lightbox-prev" onclick="prevEventImage()">&#8249;</span>
+                    <span class="lightbox-nav lightbox-next" onclick="nextEventImage()">&#8250;</span>
+                    <img id="eventLightboxImg" src="" alt="">
+                `;
+                lightbox.onclick = function(e) {
+                    if (e.target === lightbox) {
+                        closeEventLightbox();
+                    }
+                };
+                document.body.appendChild(lightbox);
+            }
+            
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+            img.onclick = function(e) { e.stopPropagation(); };
+            
+            lightbox.style.display = 'block';
+            document.body.style.overflow = 'hidden';
         }
+        
+        function closeEventLightbox() {
+            const lightbox = document.getElementById('eventLightbox');
+            if (lightbox) {
+                lightbox.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function nextEventImage() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+        }
+        
+        function prevEventImage() {
+            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+            const img = document.getElementById('eventLightboxImg');
+            img.src = '<?php echo BASE_URL; ?>uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+        }
+        
+        // Navigace klávesnicí
+        document.addEventListener('keydown', function(e) {
+            const lightbox = document.getElementById('eventLightbox');
+            if (lightbox && lightbox.style.display === 'block') {
+                switch(e.key) {
+                    case 'Escape':
+                        closeEventLightbox();
+                        break;
+                    case 'ArrowLeft':
+                        prevEventImage();
+                        break;
+                    case 'ArrowRight':
+                        nextEventImage();
+                        break;
+                }
+            }
+        });
     </script>
 <?php endif; ?>
