@@ -110,6 +110,11 @@ try {
             img.alt = images[0].original_name;
             img.onclick = function(e) { e.stopPropagation(); };
             
+            // Zajistit, že obrázek je viditelný po načtení
+            img.onload = function() {
+                img.classList.remove('loading');
+            };
+            
             // Aktualizace počítadla
             const counter = document.getElementById('lightboxCounter');
             if (counter) counter.textContent = `1 / ${images.length}`;
@@ -143,8 +148,17 @@ try {
             const counter = document.getElementById('lightboxCounter');
             
             if (img && window.currentEventImages && window.currentEventImages[window.currentImageIndex]) {
+                // Přidat loading třídu
+                img.classList.add('loading');
+                
+                // Nastavit nový obrázek
                 img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
                 img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+                
+                // Po načtení obrázku odstranit loading třídu
+                img.onload = function() {
+                    img.classList.remove('loading');
+                };
                 
                 if (counter) {
                     counter.textContent = `${window.currentImageIndex + 1} / ${window.currentEventImages.length}`;
@@ -165,16 +179,36 @@ try {
             if (!window.currentEventImages || window.currentEventImages.length === 0) return;
             window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
             const img = document.getElementById('eventLightboxImg');
+            
+            // Přidat loading třídu
+            img.classList.add('loading');
+            
+            // Nastavit nový obrázek
             img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
             img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+            
+            // Po načtení obrázku odstranit loading třídu
+            img.onload = function() {
+                img.classList.remove('loading');
+            };
         }
         
         function prevEventImage() {
             if (!window.currentEventImages || window.currentEventImages.length === 0) return;
             window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
             const img = document.getElementById('eventLightboxImg');
+            
+            // Přidat loading třídu
+            img.classList.add('loading');
+            
+            // Nastavit nový obrázek
             img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
             img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+            
+            // Po načtení obrázku odstranit loading třídu
+            img.onload = function() {
+                img.classList.remove('loading');
+            };
         }
         
         // Globální funkce pro lightbox z event.php
@@ -692,6 +726,12 @@ try {
             max-height: 90%;
             border-radius: 10px;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .event-lightbox img.loading {
+            opacity: 0;
         }
         
         .event-lightbox .lightbox-close {
@@ -994,6 +1034,7 @@ try {
         </div>
     </div>
 
+    <script>
         // Zavření modalu při kliknutí mimo obsah
         window.onclick = function(event) {
             const modal = document.getElementById('eventModal');
