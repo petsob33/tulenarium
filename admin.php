@@ -778,12 +778,75 @@ try {
             position: relative;
         }
         
+        .input-group {
+            display: flex;
+            gap: 5px;
+        }
+        
         #participantInput {
-            width: 100%;
+            flex: 1;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 1rem;
+        }
+        
+        .btn-add-participant {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            min-width: 45px;
+        }
+        
+        .btn-add-participant:hover {
+            background: #218838;
+        }
+        
+        .btn-add-participant:active {
+            background: #1e7e34;
+        }
+        
+        /* Mobilní optimalizace pro autocomplete */
+        @media (max-width: 768px) {
+            .input-group {
+                gap: 8px;
+            }
+            
+            #participantInput {
+                padding: 12px;
+                font-size: 16px; /* Zabrání zoomu na iOS */
+            }
+            
+            .btn-add-participant {
+                padding: 12px 18px;
+                font-size: 1.4rem;
+                min-width: 50px;
+            }
+            
+            .autocomplete-dropdown {
+                max-height: 150px;
+            }
+            
+            .autocomplete-item {
+                padding: 12px;
+                font-size: 16px;
+            }
+            
+            .participant-tag {
+                padding: 6px 10px;
+                font-size: 1rem;
+            }
+            
+            .participant-tag .remove-tag {
+                font-size: 1.4rem;
+                padding: 2px 6px;
+            }
         }
         
         .autocomplete-dropdown {
@@ -1073,7 +1136,11 @@ try {
                                     <!-- Zde se budou zobrazovat přidaná jména -->
                                 </div>
                                 <div class="autocomplete-container">
-                                    <input type="text" id="participantInput" placeholder="Začněte psát jméno...">
+                                    <div class="input-group">
+                                        <input type="text" id="participantInput" placeholder="Začněte psát jméno..." 
+                                               inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="words">
+                                        <button type="button" id="addParticipantBtn" class="btn-add-participant">+</button>
+                                    </div>
                                     <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
                                 </div>
                                 <input type="hidden" id="participants" name="participants" value="<?php echo $editEvent ? htmlspecialchars($editEvent['participants_text']) : ''; ?>">
@@ -1374,14 +1441,23 @@ try {
         function initializeAutocomplete() {
             const input = document.getElementById('participantInput');
             const dropdown = document.getElementById('autocompleteDropdown');
+            const addButton = document.getElementById('addParticipantBtn');
             
             input.addEventListener('input', handleInput);
             input.addEventListener('keydown', handleKeydown);
             input.addEventListener('focus', handleFocus);
             
+            // Přidání tlačítka pro přidání účastníka
+            addButton.addEventListener('click', function() {
+                const value = input.value.trim();
+                if (value) {
+                    addParticipant(value);
+                }
+            });
+            
             // Skrytí dropdown při kliknutí mimo
             document.addEventListener('click', function(e) {
-                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target) && !addButton.contains(e.target)) {
                     hideDropdown();
                 }
             });
@@ -1439,6 +1515,18 @@ try {
                     if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
                         e.preventDefault();
                         addParticipant(currentSuggestions[selectedIndex]);
+                    }
+                    break;
+                    
+                // Podpora pro mobilní klávesnice
+                case 'Go':
+                case 'Search':
+                case 'Send':
+                    e.preventDefault();
+                    const input = document.getElementById('participantInput');
+                    const value = input.value.trim();
+                    if (value) {
+                        addParticipant(value);
                     }
                     break;
             }
@@ -1512,10 +1600,16 @@ try {
             updateParticipantsDisplay();
             updateHiddenField();
             
-            // Vyčištění input
+            // Vyčištění input a focus
             const input = document.getElementById('participantInput');
             input.value = '';
+            input.focus();
             hideDropdown();
+            
+            // Vibrace na mobilu (pokud je podporována)
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
         }
         
         // Odstranění účastníka
