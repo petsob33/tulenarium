@@ -1,153 +1,185 @@
-<?php
-require_once 'config.php';
+    <?php
+    require_once 'config.php';
 
-// Kontrola přihlášení pro celou aplikaci
-if (!isLoggedIn()) {
-    header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-    exit;
-}
+    // Kontrola přihlášení pro celou aplikaci
+    if (!isLoggedIn()) {
+        header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
 
-try {
-    $db = getDB();
-    $stmt = $db->query("
-        SELECT e.*, 
-               (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) as actual_participants_count
-        FROM events e 
-        ORDER BY event_date DESC
-    ");
-    $events = $stmt->fetchAll();
-} catch (PDOException $e) {
-    $events = [];
-    $error = 'Chyba při načítání eventů: ' . $e->getMessage();
-}
-?>
+    try {
+        $db = getDB();
+        $stmt = $db->query("
+            SELECT e.*, 
+                (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) as actual_participants_count
+            FROM events e 
+            ORDER BY event_date DESC
+        ");
+        $events = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        $events = [];
+        $error = 'Chyba při načítání eventů: ' . $e->getMessage();
+    }
+    ?>
 
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tulenarium - Přehled eventů</title>
-    <script>
-        // Globální proměnné pro lightbox
-        window.currentEventImages = [];
-        window.currentImageIndex = 0;
-        
-        // BASE_URL pro JavaScript
-        window.BASE_URL = '<?php echo BASE_URL; ?>';
-        
-        // Funkce pro otevírání detailu eventu
-        function openEventDetail(eventId) {
-            const modal = document.getElementById('eventModal');
-            const modalBody = document.getElementById('modalBody');
-            const modalTitle = document.getElementById('modalTitle');
-            
-            modal.style.display = 'block';
-            modalBody.innerHTML = '<div class="loading">Načítání...</div>';
-            modalTitle.textContent = 'Detail eventu';
-            
-            // Načtení detailu přes AJAX
-            fetch('event.php?id=' + eventId)
-                .then(response => response.text())
-                .then(data => {
-                    modalBody.innerHTML = data;
-                    
-                    // Po načtení obsahu modalu nastavíme lightbox funkce
-                    if (typeof window.currentEventImages !== 'undefined' && window.currentEventImages.length > 0) {
-                        // Lightbox funkce jsou už definované v event.php
-                        console.log('Lightbox funkce jsou připraveny pro', window.currentEventImages.length, 'obrázků');
-                    }
-                })
-                .catch(error => {
-                    modalBody.innerHTML = '<div class="error">Chyba při načítání detailu eventu.</div>';
-                });
-        }
-        
-        function closeEventDetail() {
-            document.getElementById('eventModal').style.display = 'none';
-        }
-        
-        // Lightbox pro náhledové fotky s navigací mezi všemi fotkami
-        function openEventLightboxFromThumbnail(eventId, images, eventTitle) {
-            event.stopPropagation(); // Zabrání otevření modalu
-            
-            if (!images || images.length === 0) {
-                console.error('Žádné fotky k zobrazení');
-                return;
-            }
-            
-            // Nastavení globálních proměnných pro lightbox
-            window.currentEventImages = images;
+    <!DOCTYPE html>
+    <html lang="cs">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tulenarium - Přehled eventů</title>
+        <script>
+            // Globální proměnné pro lightbox
+            window.currentEventImages = [];
             window.currentImageIndex = 0;
             
-            // Vytvoření lightboxu pro fotky eventu
-            let lightbox = document.getElementById('eventLightboxFromThumbnail');
-            if (!lightbox) {
-                lightbox = document.createElement('div');
-                lightbox.id = 'eventLightboxFromThumbnail';
-                lightbox.className = 'event-lightbox';
-                lightbox.innerHTML = `
-                    <button type="button" class="lightbox-close" onclick="closeEventLightboxFromThumbnail()">&times;</button>
-                    <button type="button" class="lightbox-nav lightbox-prev" onclick="prevEventImageFromThumbnail()">&#8249;</button>
-                    <button type="button" class="lightbox-nav lightbox-next" onclick="nextEventImageFromThumbnail()">&#8250;</button>
-                    <div class="lightbox-info">
-                        <span id="lightboxCounter">1 / ${images.length}</span>
-                        <span id="lightboxTitle">${eventTitle}</span>
-                    </div>
-                    <img id="eventLightboxImgFromThumbnail" src="" alt="">
-                `;
-                lightbox.onclick = function(e) {
-                    if (e.target === lightbox) {
-                        closeEventLightboxFromThumbnail();
-                    }
+            // BASE_URL pro JavaScript
+            window.BASE_URL = '<?php echo BASE_URL; ?>';
+            
+            // Funkce pro otevírání detailu eventu
+            function openEventDetail(eventId) {
+                const modal = document.getElementById('eventModal');
+                const modalBody = document.getElementById('modalBody');
+                const modalTitle = document.getElementById('modalTitle');
+                
+                modal.style.display = 'block';
+                modalBody.innerHTML = '<div class="loading">Načítání...</div>';
+                modalTitle.textContent = 'Detail eventu';
+                
+                // Načtení detailu přes AJAX
+                fetch('event.php?id=' + eventId)
+                    .then(response => response.text())
+                    .then(data => {
+                        modalBody.innerHTML = data;
+                        
+                        // Po načtení obsahu modalu nastavíme lightbox funkce
+                        if (typeof window.currentEventImages !== 'undefined' && window.currentEventImages.length > 0) {
+                            // Lightbox funkce jsou už definované v event.php
+                            console.log('Lightbox funkce jsou připraveny pro', window.currentEventImages.length, 'obrázků');
+                        }
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = '<div class="error">Chyba při načítání detailu eventu.</div>';
+                    });
+            }
+            
+            function closeEventDetail() {
+                document.getElementById('eventModal').style.display = 'none';
+            }
+            
+            // Lightbox pro náhledové fotky s navigací mezi všemi fotkami
+            function openEventLightboxFromThumbnail(eventId, images, eventTitle) {
+                event.stopPropagation(); // Zabrání otevření modalu
+                
+                if (!images || images.length === 0) {
+                    console.error('Žádné fotky k zobrazení');
+                    return;
+                }
+                
+                // Nastavení globálních proměnných pro lightbox
+                window.currentEventImages = images;
+                window.currentImageIndex = 0;
+                
+                // Vytvoření lightboxu pro fotky eventu
+                let lightbox = document.getElementById('eventLightboxFromThumbnail');
+                if (!lightbox) {
+                    lightbox = document.createElement('div');
+                    lightbox.id = 'eventLightboxFromThumbnail';
+                    lightbox.className = 'event-lightbox';
+                    lightbox.innerHTML = `
+                        <button type="button" class="lightbox-close" onclick="closeEventLightboxFromThumbnail()">&times;</button>
+                        <button type="button" class="lightbox-nav lightbox-prev" onclick="prevEventImageFromThumbnail()">&#8249;</button>
+                        <button type="button" class="lightbox-nav lightbox-next" onclick="nextEventImageFromThumbnail()">&#8250;</button>
+                        <div class="lightbox-info">
+                            <span id="lightboxCounter">1 / ${images.length}</span>
+                            <span id="lightboxTitle">${eventTitle}</span>
+                        </div>
+                        <img id="eventLightboxImgFromThumbnail" src="" alt="">
+                    `;
+                    lightbox.onclick = function(e) {
+                        if (e.target === lightbox) {
+                            closeEventLightboxFromThumbnail();
+                        }
+                    };
+                    document.body.appendChild(lightbox);
+                }
+                
+                // Zobrazení první fotky
+                const img = document.getElementById('eventLightboxImgFromThumbnail');
+                img.src = window.BASE_URL + 'uploads/' + images[0].filename;
+                img.alt = images[0].original_name;
+                img.onclick = function(e) { e.stopPropagation(); };
+                
+                // Zajistit, že obrázek je viditelný po načtení
+                img.onload = function() {
+                    img.classList.remove('loading');
                 };
-                document.body.appendChild(lightbox);
+                
+                // Aktualizace počítadla
+                const counter = document.getElementById('lightboxCounter');
+                if (counter) counter.textContent = `1 / ${images.length}`;
+                
+                lightbox.style.display = 'block';
+                document.body.style.overflow = 'hidden';
             }
             
-            // Zobrazení první fotky
-            const img = document.getElementById('eventLightboxImgFromThumbnail');
-            img.src = window.BASE_URL + 'uploads/' + images[0].filename;
-            img.alt = images[0].original_name;
-            img.onclick = function(e) { e.stopPropagation(); };
-            
-            // Zajistit, že obrázek je viditelný po načtení
-            img.onload = function() {
-                img.classList.remove('loading');
-            };
-            
-            // Aktualizace počítadla
-            const counter = document.getElementById('lightboxCounter');
-            if (counter) counter.textContent = `1 / ${images.length}`;
-            
-            lightbox.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
-        
-        function closeEventLightboxFromThumbnail() {
-            const lightbox = document.getElementById('eventLightboxFromThumbnail');
-            if (lightbox) {
-                lightbox.style.display = 'none';
-                document.body.style.overflow = 'auto';
+            function closeEventLightboxFromThumbnail() {
+                const lightbox = document.getElementById('eventLightboxFromThumbnail');
+                if (lightbox) {
+                    lightbox.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                }
             }
-        }
-        
-        function nextEventImageFromThumbnail() {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
-            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
-            updateEventLightboxImage();
-        }
-        
-        function prevEventImageFromThumbnail() {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
-            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
-            updateEventLightboxImage();
-        }
-        
-        function updateEventLightboxImage() {
-            const img = document.getElementById('eventLightboxImgFromThumbnail');
-            const counter = document.getElementById('lightboxCounter');
             
-            if (img && window.currentEventImages && window.currentEventImages[window.currentImageIndex]) {
+            function nextEventImageFromThumbnail() {
+                if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+                window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+                updateEventLightboxImage();
+            }
+            
+            function prevEventImageFromThumbnail() {
+                if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+                window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+                updateEventLightboxImage();
+            }
+            
+            function updateEventLightboxImage() {
+                const img = document.getElementById('eventLightboxImgFromThumbnail');
+                const counter = document.getElementById('lightboxCounter');
+                
+                if (img && window.currentEventImages && window.currentEventImages[window.currentImageIndex]) {
+                    // Přidat loading třídu
+                    img.classList.add('loading');
+                    
+                    // Nastavit nový obrázek
+                    img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+                    img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+                    
+                    // Po načtení obrázku odstranit loading třídu
+                    img.onload = function() {
+                        img.classList.remove('loading');
+                    };
+                    
+                    if (counter) {
+                        counter.textContent = `${window.currentImageIndex + 1} / ${window.currentEventImages.length}`;
+                    }
+                }
+            }
+            
+            // Funkce pro lightbox z event.php
+            function closeEventLightbox() {
+                const lightbox = document.getElementById('eventLightbox');
+                if (lightbox) {
+                    lightbox.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                }
+            }
+            
+            function nextEventImage() {
+                if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+                window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
+                const img = document.getElementById('eventLightboxImg');
+                
                 // Přidat loading třídu
                 img.classList.add('loading');
                 
@@ -159,399 +191,424 @@ try {
                 img.onload = function() {
                     img.classList.remove('loading');
                 };
+            }
+            
+            function prevEventImage() {
+                if (!window.currentEventImages || window.currentEventImages.length === 0) return;
+                window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
+                const img = document.getElementById('eventLightboxImg');
                 
-                if (counter) {
-                    counter.textContent = `${window.currentImageIndex + 1} / ${window.currentEventImages.length}`;
-                }
-            }
-        }
-        
-        // Funkce pro lightbox z event.php
-        function closeEventLightbox() {
-            const lightbox = document.getElementById('eventLightbox');
-            if (lightbox) {
-                lightbox.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-        }
-        
-        function nextEventImage() {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
-            window.currentImageIndex = (window.currentImageIndex + 1) % window.currentEventImages.length;
-            const img = document.getElementById('eventLightboxImg');
-            
-            // Přidat loading třídu
-            img.classList.add('loading');
-            
-            // Nastavit nový obrázek
-            img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
-            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
-            
-            // Po načtení obrázku odstranit loading třídu
-            img.onload = function() {
-                img.classList.remove('loading');
-            };
-        }
-        
-        function prevEventImage() {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) return;
-            window.currentImageIndex = (window.currentImageIndex - 1 + window.currentEventImages.length) % window.currentEventImages.length;
-            const img = document.getElementById('eventLightboxImg');
-            
-            // Přidat loading třídu
-            img.classList.add('loading');
-            
-            // Nastavit nový obrázek
-            img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
-            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
-            
-            // Po načtení obrázku odstranit loading třídu
-            img.onload = function() {
-                img.classList.remove('loading');
-            };
-        }
-        
-        // Globální funkce pro lightbox z event.php
-        window.openEventLightbox = function(index) {
-            if (!window.currentEventImages || window.currentEventImages.length === 0) {
-                console.error('No images available for lightbox');
-                return;
-            }
-            
-            window.currentImageIndex = index;
-            
-            // Vytvoření lightboxu pokud neexistuje
-            let lightbox = document.getElementById('eventLightbox');
-            if (!lightbox) {
-                lightbox = document.createElement('div');
-                lightbox.id = 'eventLightbox';
-                lightbox.className = 'event-lightbox';
-                lightbox.style.cssText = `
-                    display: none;
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.95);
-                    z-index: 3000;
-                    cursor: pointer;
-                `;
-                lightbox.innerHTML = `
-                    <button type="button" class="lightbox-close" onclick="closeEventLightbox()" style="
-                        position: absolute;
-                        top: 20px;
-                        right: 30px;
-                        color: white;
-                        font-size: 3rem;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 3001;
-                        width: 60px;
-                        height: 60px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: all 0.3s ease;
-                        background: none;
-                        border: none;
-                        outline: none;
-                    ">&times;</button>
-                    <button type="button" class="lightbox-nav lightbox-prev" onclick="prevEventImage()" style="
-                        position: absolute;
-                        top: 50%;
-                        left: 30px;
-                        transform: translateY(-50%);
-                        color: white;
-                        font-size: 3rem;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 3001;
-                        width: 60px;
-                        height: 60px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: all 0.3s ease;
-                        user-select: none;
-                        background: none;
-                        border: none;
-                        outline: none;
-                    ">&#8249;</button>
-                    <button type="button" class="lightbox-nav lightbox-next" onclick="nextEventImage()" style="
-                        position: absolute;
-                        top: 50%;
-                        right: 30px;
-                        transform: translateY(-50%);
-                        color: white;
-                        font-size: 3rem;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 3001;
-                        width: 60px;
-                        height: 60px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: all 0.3s ease;
-                        user-select: none;
-                        background: none;
-                        border: none;
-                        outline: none;
-                    ">&#8250;</button>
-                    <img id="eventLightboxImg" src="" alt="" style="
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        max-width: 90%;
-                        max-height: 90%;
-                        border-radius: 10px;
-                        box-shadow: 0 0 50px rgba(0,0,0,0.5);
-                    ">
-                `;
-                lightbox.onclick = function(e) {
-                    if (e.target === lightbox) {
-                        closeEventLightbox();
-                    }
+                // Přidat loading třídu
+                img.classList.add('loading');
+                
+                // Nastavit nový obrázek
+                img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+                img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+                
+                // Po načtení obrázku odstranit loading třídu
+                img.onload = function() {
+                    img.classList.remove('loading');
                 };
-                document.body.appendChild(lightbox);
             }
             
-            const img = document.getElementById('eventLightboxImg');
-            img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
-            img.alt = window.currentEventImages[window.currentImageIndex].original_name;
-            img.onclick = function(e) { e.stopPropagation(); };
-            
-            lightbox.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
-    </script>
-    
-    <style>
-        * {
+            // Globální funkce pro lightbox z event.php
+            window.openEventLightbox = function(index) {
+                if (!window.currentEventImages || window.currentEventImages.length === 0) {
+                    console.error('No images available for lightbox');
+                    return;
+                }
+                
+                window.currentImageIndex = index;
+                
+                // Vytvoření lightboxu pokud neexistuje
+                let lightbox = document.getElementById('eventLightbox');
+                if (!lightbox) {
+                    lightbox = document.createElement('div');
+                    lightbox.id = 'eventLightbox';
+                    lightbox.className = 'event-lightbox';
+                    lightbox.style.cssText = `
+                        display: none;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.95);
+                        z-index: 3000;
+                        cursor: pointer;
+                    `;
+                    lightbox.innerHTML = `
+                        <button type="button" class="lightbox-close" onclick="closeEventLightbox()" style="
+                            position: absolute;
+                            top: 20px;
+                            right: 30px;
+                            color: white;
+                            font-size: 3rem;
+                            font-weight: bold;
+                            cursor: pointer;
+                            z-index: 3001;
+                            width: 60px;
+                            height: 60px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: all 0.3s ease;
+                            background: none;
+                            border: none;
+                            outline: none;
+                        ">&times;</button>
+                        <button type="button" class="lightbox-nav lightbox-prev" onclick="prevEventImage()" style="
+                            position: absolute;
+                            top: 50%;
+                            left: 30px;
+                            transform: translateY(-50%);
+                            color: white;
+                            font-size: 3rem;
+                            font-weight: bold;
+                            cursor: pointer;
+                            z-index: 3001;
+                            width: 60px;
+                            height: 60px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: all 0.3s ease;
+                            user-select: none;
+                            background: none;
+                            border: none;
+                            outline: none;
+                        ">&#8249;</button>
+                        <button type="button" class="lightbox-nav lightbox-next" onclick="nextEventImage()" style="
+                            position: absolute;
+                            top: 50%;
+                            right: 30px;
+                            transform: translateY(-50%);
+                            color: white;
+                            font-size: 3rem;
+                            font-weight: bold;
+                            cursor: pointer;
+                            z-index: 3001;
+                            width: 60px;
+                            height: 60px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: all 0.3s ease;
+                            user-select: none;
+                            background: none;
+                            border: none;
+                            outline: none;
+                        ">&#8250;</button>
+                        <img id="eventLightboxImg" src="" alt="" style="
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            max-width: 90%;
+                            max-height: 90%;
+                            border-radius: 10px;
+                            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+                        ">
+                    `;
+                    lightbox.onclick = function(e) {
+                        if (e.target === lightbox) {
+                            closeEventLightbox();
+                        }
+                    };
+                    document.body.appendChild(lightbox);
+                }
+                
+                const img = document.getElementById('eventLightboxImg');
+                img.src = window.BASE_URL + 'uploads/' + window.currentEventImages[window.currentImageIndex].filename;
+                img.alt = window.currentEventImages[window.currentImageIndex].original_name;
+                img.onclick = function(e) { e.stopPropagation(); };
+                
+                lightbox.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+        </script>
+        
+        <style>
+                    * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            /* OPRAVA: Odstranění modrého outline při focusu */
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        body {
+        /* OPRAVA: Globální odstranění všech focus efektů */
+        *:focus {
+            outline: none !important;
+        }
+        
+        button:focus,
+        button:active {
+            outline: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+        }
+            
+                    body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #1a1a1a;
             color: #ffffff;
             min-height: 100vh;
             line-height: 1.6;
             margin: 0;
+            /* OPRAVA: Prevence modrého zvýraznění textu */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         
-        /* Navigation Menu */
-        .navbar {
-            background: #2d2d2d;
-            border-bottom: 3px solid #1a1a1a;
-            padding: 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        /* Povolení označování pouze pro text v obsahu */
+        .event-description,
+        .event-title,
+        p {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
-        
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }
-        
-        .nav-logo {
+            
+            /* Navigation Menu */
+            .navbar {
+                background: #2d2d2d;
+                border-bottom: 3px solid #1a1a1a;
+                padding: 0;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            }
+            
+            .nav-container {
+                max-width: 1200px;
+                margin: 0 auto;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0 20px;
+            }
+            
+                    .nav-logo {
             font-size: 1.5rem;
             font-weight: bold;
             color: #ffffff;
             text-decoration: none;
             padding: 15px 0;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
         }
         
-        .nav-menu {
-            display: flex;
-            list-style: none;
-            margin: 0;
-            padding: 0;
+        .nav-logo:focus {
+            outline: none;
         }
-        
-        .nav-item {
-            margin: 0;
-        }
-        
-        .nav-link {
+            
+            .nav-menu {
+                display: flex;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .nav-item {
+                margin: 0;
+            }
+            
+                    .nav-link {
             display: block;
             color: #ffffff;
             text-decoration: none;
             padding: 20px 25px;
             transition: all 0.3s ease;
             border-bottom: 3px solid transparent;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
         }
-        
-        .nav-link:hover {
+            
+                    .nav-link:hover {
             background: #3a3a3a;
             border-bottom-color: #ffffff;
         }
         
-        .nav-link.active {
+        .nav-link:focus {
+            outline: none;
             background: #3a3a3a;
             border-bottom-color: #ffffff;
         }
-        
-        /* Mobile menu toggle */
-        .nav-toggle {
+            
+            .nav-link.active {
+                background: #3a3a3a;
+                border-bottom-color: #ffffff;
+            }
+            
+            /* Mobile menu toggle */
+                    .nav-toggle {
             display: none;
             flex-direction: column;
             cursor: pointer;
             padding: 10px;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
+            border: none;
+            background: none;
         }
         
-        .nav-toggle span {
-            width: 25px;
-            height: 3px;
-            background: #ffffff;
-            margin: 3px 0;
-            transition: 0.3s;
+        .nav-toggle:focus {
+            outline: none;
         }
-        
-        /* Hamburger menu animation */
-        .nav-toggle.active span:nth-child(1) {
-            transform: rotate(-45deg) translate(-5px, 6px);
-        }
-        
-        .nav-toggle.active span:nth-child(2) {
-            opacity: 0;
-        }
-        
-        .nav-toggle.active span:nth-child(3) {
-            transform: rotate(45deg) translate(-5px, -6px);
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px 20px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 60px;
-            color: #ffffff;
-            padding: 40px 0;
-        }
-        
-        .header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            font-weight: 300;
-            letter-spacing: 2px;
-            color: #ffffff;
-        }
-        
-        .header p {
-            font-size: 1.2rem;
-            color: #cccccc;
-        }
-        
-        .events-timeline {
-            position: relative;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .events-timeline::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: #666666;
-            transform: translateX(-50%);
-        }
-        
-        .event-item {
+            
+            .nav-toggle span {
+                width: 25px;
+                height: 3px;
+                background: #ffffff;
+                margin: 3px 0;
+                transition: 0.3s;
+            }
+            
+            /* Hamburger menu animation */
+            .nav-toggle.active span:nth-child(1) {
+                transform: rotate(-45deg) translate(-5px, 6px);
+            }
+            
+            .nav-toggle.active span:nth-child(2) {
+                opacity: 0;
+            }
+            
+            .nav-toggle.active span:nth-child(3) {
+                transform: rotate(45deg) translate(-5px, -6px);
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 40px 20px 20px;
+            }
+            
+            .header {
+                text-align: center;
+                margin-bottom: 60px;
+                color: #ffffff;
+                padding: 40px 0;
+            }
+            
+            .header h1 {
+                font-size: 3rem;
+                margin-bottom: 10px;
+                font-weight: 300;
+                letter-spacing: 2px;
+                color: #ffffff;
+            }
+            
+            .header p {
+                font-size: 1.2rem;
+                color: #cccccc;
+            }
+            
+            .events-timeline {
+                position: relative;
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            
+            .events-timeline::before {
+                content: '';
+                position: absolute;
+                left: 50%;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: #666666;
+                transform: translateX(-50%);
+            }
+            
+                    .event-item {
             position: relative;
             margin-bottom: 40px;
             cursor: pointer;
             transition: all 0.3s ease;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
         }
         
-        .event-item:nth-child(odd) {
-            padding-right: 50%;
-            text-align: right;
+        .event-item:focus {
+            outline: none;
         }
-        
-        .event-item:nth-child(even) {
-            padding-left: 50%;
-            text-align: left;
-        }
-        
-        .event-item::before {
-            content: '';
-            position: absolute;
-            top: 20px;
-            width: 16px;
-            height: 16px;
-            background: #1a1a1a;
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            z-index: 2;
-        }
-        
-        .event-item:nth-child(odd)::before {
-            right: calc(50% - 8px);
-        }
-        
-        .event-item:nth-child(even)::before {
-            left: calc(50% - 8px);
-        }
-        
-        .event-content {
-            background: #ffffff;
-            color: #333333;
-            border: 2px solid #e0e0e0;
-            padding: 30px;
-            border-radius: 15px;
-            transition: all 0.3s ease;
-            position: relative;
-            box-shadow: 0 4px 20px rgba(255,255,255,0.1);
-        }
-        
-        .event-content:hover {
-            background: #f8f9fa;
-            border-color: #1a1a1a;
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(255,255,255,0.2);
-        }
-        
-        .event-content::before {
-            content: '';
-            position: absolute;
-            top: 20px;
-            width: 0;
-            height: 0;
-            border: 15px solid transparent;
-        }
-        
-        .event-item:nth-child(odd) .event-content::before {
-            right: -30px;
-            border-left-color: #ffffff;
-        }
-        
-        .event-item:nth-child(even) .event-content::before {
-            left: -30px;
-            border-right-color: #ffffff;
-        }
-        
-        .event-thumbnail {
+            
+            .event-item:nth-child(odd) {
+                padding-right: 50%;
+                text-align: right;
+            }
+            
+            .event-item:nth-child(even) {
+                padding-left: 50%;
+                text-align: left;
+            }
+            
+            .event-item::before {
+                content: '';
+                position: absolute;
+                top: 20px;
+                width: 16px;
+                height: 16px;
+                background: #1a1a1a;
+                border: 3px solid #ffffff;
+                border-radius: 50%;
+                z-index: 2;
+            }
+            
+            .event-item:nth-child(odd)::before {
+                right: calc(50% - 8px);
+            }
+            
+            .event-item:nth-child(even)::before {
+                left: calc(50% - 8px);
+            }
+            
+            .event-content {
+                background: #ffffff;
+                color: #333333;
+                border: 2px solid #e0e0e0;
+                padding: 30px;
+                border-radius: 15px;
+                transition: all 0.3s ease;
+                position: relative;
+                box-shadow: 0 4px 20px rgba(255,255,255,0.1);
+            }
+            
+            .event-content:hover {
+                background: #f8f9fa;
+                border-color: #1a1a1a;
+                transform: translateY(-5px);
+                box-shadow: 0 8px 30px rgba(255,255,255,0.2);
+            }
+            
+            .event-content::before {
+                content: '';
+                position: absolute;
+                top: 20px;
+                width: 0;
+                height: 0;
+                border: 15px solid transparent;
+            }
+            
+            .event-item:nth-child(odd) .event-content::before {
+                right: -30px;
+                border-left-color: #ffffff;
+            }
+            
+            .event-item:nth-child(even) .event-content::before {
+                left: -30px;
+                border-right-color: #ffffff;
+            }
+            
+                    .event-thumbnail {
             width: 100%;
             height: 200px;
             object-fit: cover;
@@ -560,120 +617,126 @@ try {
             cursor: pointer;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
         }
         
-        .event-thumbnail:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        .event-thumbnail:focus {
+            outline: none;
         }
-        
-        .event-thumbnail::after {
-            content: '🔍';
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px 8px;
-            border-radius: 50%;
-            font-size: 0.8rem;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-        
-        .event-thumbnail:hover::after {
-            opacity: 1;
-        }
-        
-        .event-title {
-            font-size: 1.6rem;
-            font-weight: 600;
-            color: #222222;
-            margin-bottom: 15px;
-        }
-        
-        .event-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
-            color: #666666;
-            font-size: 0.95rem;
-        }
-        
-        .event-meta span {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #f8f9fa;
-            padding: 6px 12px;
-            border-radius: 20px;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .event-description {
-            color: #555555;
-            line-height: 1.6;
-            font-size: 1rem;
-        }
-        
-        .no-events {
-            text-align: center;
-            background: #ffffff;
-            padding: 50px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(255,255,255,0.1);
-            color: #666666;
-            border: 2px solid #e0e0e0;
-        }
-        
-        .no-events h2 {
-            margin-bottom: 15px;
-            color: #222222;
-            font-size: 1.8rem;
-            font-weight: 300;
-        }
-        
-        /* Modal pro detail eventu */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-        }
-        
-        .modal-content {
-            position: relative;
-            background: #ffffff;
-            margin: 3% auto;
-            max-width: 90%;
-            max-height: 90%;
-            border-radius: 20px;
-            overflow-y: auto;
-            border: 3px solid #e0e0e0;
-            box-shadow: 0 20px 60px rgba(255,255,255,0.1);
-        }
-        
-        .modal-header {
-            padding: 20px 30px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-title {
-            font-size: 2rem;
-            color: #333;
-        }
-        
-        .close-btn {
+            
+            .event-thumbnail:hover {
+                transform: scale(1.02);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            }
+            
+            .event-thumbnail::after {
+                content: '🔍';
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 5px 8px;
+                border-radius: 50%;
+                font-size: 0.8rem;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            }
+            
+            .event-thumbnail:hover::after {
+                opacity: 1;
+            }
+            
+            .event-title {
+                font-size: 1.6rem;
+                font-weight: 600;
+                color: #222222;
+                margin-bottom: 15px;
+            }
+            
+            .event-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px;
+                margin-bottom: 15px;
+                color: #666666;
+                font-size: 0.95rem;
+            }
+            
+            .event-meta span {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: #f8f9fa;
+                padding: 6px 12px;
+                border-radius: 20px;
+                border: 1px solid #e0e0e0;
+            }
+            
+            .event-description {
+                color: #555555;
+                line-height: 1.6;
+                font-size: 1rem;
+            }
+            
+            .no-events {
+                text-align: center;
+                background: #ffffff;
+                padding: 50px;
+                border-radius: 20px;
+                box-shadow: 0 10px 40px rgba(255,255,255,0.1);
+                color: #666666;
+                border: 2px solid #e0e0e0;
+            }
+            
+            .no-events h2 {
+                margin-bottom: 15px;
+                color: #222222;
+                font-size: 1.8rem;
+                font-weight: 300;
+            }
+            
+            /* Modal pro detail eventu */
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.9);
+                z-index: 1000;
+                backdrop-filter: blur(10px);
+            }
+            
+            .modal-content {
+                position: relative;
+                background: #ffffff;
+                margin: 3% auto;
+                max-width: 90%;
+                max-height: 90%;
+                border-radius: 20px;
+                overflow-y: auto;
+                border: 3px solid #e0e0e0;
+                box-shadow: 0 20px 60px rgba(255,255,255,0.1);
+            }
+            
+            .modal-header {
+                padding: 20px 30px;
+                border-bottom: 1px solid #eee;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .modal-title {
+                font-size: 2rem;
+                color: #333;
+            }
+            
+                    .close-btn {
             background: none;
             border: none;
             font-size: 2rem;
@@ -687,46 +750,53 @@ try {
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
         }
-        
-        .close-btn:hover {
+            
+                    .close-btn:hover {
             background: #f0f0f0;
             color: #333;
         }
         
-        .modal-body {
-            padding: 30px;
+        .close-btn:focus {
+            outline: none;
+            background: #f0f0f0;
         }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px;
-        }
-        
-        /* Mobile Responsive */
-        /* Event Lightbox - vyšší z-index než modal */
-        .event-lightbox {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 3000;
-            cursor: pointer;
-        }
-        
-        .event-lightbox img {
+            
+            .modal-body {
+                padding: 30px;
+            }
+            
+            .loading {
+                text-align: center;
+                padding: 40px;
+                color: #666;
+            }
+            
+            .error {
+                background: #f8d7da;
+                color: #721c24;
+                padding: 15px;
+                border-radius: 5px;
+                margin: 20px;
+            }
+            
+            /* Mobile Responsive */
+            /* Event Lightbox - vyšší z-index než modal */
+            .event-lightbox {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.95);
+                z-index: 3000;
+                cursor: pointer;
+            }
+            
+                    .event-lightbox img {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -737,13 +807,19 @@ try {
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
             opacity: 1;
             transition: opacity 0.3s ease;
+            /* OPRAVA: Odstranění focus efektů */
+            outline: none;
         }
         
-        .event-lightbox img.loading {
-            opacity: 0;
+        .event-lightbox img:focus {
+            outline: none;
         }
-        
-        .event-lightbox .lightbox-close {
+            
+            .event-lightbox img.loading {
+                opacity: 0;
+            }
+            
+                    .event-lightbox .lightbox-close {
             position: absolute;
             top: 20px;
             right: 30px;
@@ -761,15 +837,22 @@ try {
             transition: all 0.3s ease;
             background: none;
             border: none;
+            /* OPRAVA: Odstranění focus efektů */
             outline: none;
         }
-        
-        .event-lightbox .lightbox-close:hover {
+            
+                    .event-lightbox .lightbox-close:hover {
             background: rgba(0,0,0,0.8);
             transform: scale(1.1);
         }
         
-        .event-lightbox .lightbox-nav {
+        .event-lightbox .lightbox-close:focus {
+            outline: none;
+            background: rgba(0,0,0,0.8);
+            transform: scale(1.1);
+        }
+            
+                    .event-lightbox .lightbox-nav {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
@@ -788,352 +871,359 @@ try {
             user-select: none;
             background: none;
             border: none;
+            /* OPRAVA: Odstranění focus efektů */
             outline: none;
         }
-        
-        .event-lightbox .lightbox-nav:hover {
+            
+                    .event-lightbox .lightbox-nav:hover {
             background: rgba(0,0,0,0.8);
             transform: translateY(-50%) scale(1.1);
         }
         
-        .event-lightbox .lightbox-prev {
-            left: 30px;
+        .event-lightbox .lightbox-nav:focus {
+            outline: none;
+            background: rgba(0,0,0,0.8);
+            transform: translateY(-50%) scale(1.1);
         }
-        
-        .event-lightbox .lightbox-next {
-            right: 30px;
-        }
-        
-        .lightbox-info {
-            position: absolute;
-            top: 20px;
-            left: 30px;
-            color: white;
-            z-index: 3001;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .lightbox-info span {
-            display: block;
-            margin-bottom: 2px;
-        }
-        
-        #lightboxCounter {
-            font-weight: bold;
-            font-size: 1rem;
-        }
-        
-        #lightboxTitle {
-            opacity: 0.9;
-            font-size: 0.8rem;
-        }
-        
-        @media (max-width: 768px) {
-            .navbar {
-                position: relative;
-            }
             
-            .nav-menu {
-                position: absolute;
-                left: -100%;
-                top: 100%;
-                flex-direction: column;
-                background-color: #2d2d2d;
-                width: 100%;
-                text-align: center;
-                transition: left 0.3s ease;
-                border-top: 2px solid #333333;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-                margin: 0;
-                padding: 0;
-                z-index: 999;
-            }
-            
-            .nav-menu.active {
-                left: 0;
-            }
-            
-            .nav-item {
-                margin: 0;
-                width: 100%;
-            }
-            
-            .nav-link {
-                padding: 18px 20px;
-                border-bottom: 1px solid #333333;
-                display: block;
-                width: 100%;
-                text-align: center;
-                border-left: none;
-                border-right: none;
-            }
-            
-            .nav-link:last-child {
-                border-bottom: none;
-            }
-            
-            .nav-toggle {
-                display: flex;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .container {
-                padding: 20px 10px;
-            }
-            
-            .events-timeline::before {
+            .event-lightbox .lightbox-prev {
                 left: 30px;
             }
             
-            .event-item {
-                padding-left: 60px !important;
-                padding-right: 0 !important;
-                text-align: left !important;
-            }
-            
-            .event-item::before {
-                left: 20px !important;
-            }
-            
-            .event-content::before {
-                left: -30px !important;
-                border-right-color: #ffffff !important;
-                border-left-color: transparent !important;
-            }
-            
-            .event-meta {
-                flex-direction: column;
-                gap: 8px;
-            }
-            
-            .event-lightbox .lightbox-nav {
-                font-size: 2rem;
-                width: 50px;
-                height: 50px;
-            }
-            
-            .event-lightbox .lightbox-close {
-                font-size: 2rem;
-                width: 50px;
-                height: 50px;
-                top: 10px;
-                right: 10px;
+            .event-lightbox .lightbox-next {
+                right: 30px;
             }
             
             .lightbox-info {
-                top: 10px;
-                left: 10px;
-                padding: 8px 12px;
-                font-size: 0.8rem;
-            }
-            
-            #lightboxCounter {
+                position: absolute;
+                top: 20px;
+                left: 30px;
+                color: white;
+                z-index: 3001;
+                background: rgba(0,0,0,0.7);
+                padding: 10px 15px;
+                border-radius: 8px;
                 font-size: 0.9rem;
             }
             
-            #lightboxTitle {
-                font-size: 0.7rem;
+            .lightbox-info span {
+                display: block;
+                margin-bottom: 2px;
             }
-        }
-    </style>
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.php" class="nav-logo">Tulenarium</a>
-            <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="index.php" class="nav-link active">Domů</a>
-                </li>
-                <li class="nav-item">
-                    <a href="admin.php" class="nav-link">Administrace</a>
-                </li>
-                <li class="nav-item">
-                    <a href="stats.php" class="nav-link">Statistiky</a>
-                </li>
-                <li class="nav-item">
-                    <a href="admin.php?logout=1" class="nav-link" onclick="return confirm('Opravdu se chcete odhlásit?')">Odhlásit se</a>
-                </li>
-            </ul>
-            <div class="nav-toggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-    </nav>
-    
-    <div class="container">
-        <div class="header">
-            <h1>Tulenarium</h1>
-            <p>Přehled našich společných zážitků</p>
-        </div>
-        
-        <?php if (isset($error)): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-        
-        <div class="events-timeline">
-            <?php if (empty($events)): ?>
-                <div class="no-events">
-                    <h2>Zatím nebyly přidány žádné eventy</h2>
-                    <p>Začněte přidáváním eventů v administraci.</p>
-                    <p style="margin-top: 15px;">
-                        <a href="admin.php" style="color: #667eea; text-decoration: none;">→ Přejít do administrace</a>
-                    </p>
+            
+            #lightboxCounter {
+                font-weight: bold;
+                font-size: 1rem;
+            }
+            
+            #lightboxTitle {
+                opacity: 0.9;
+                font-size: 0.8rem;
+            }
+            
+            @media (max-width: 768px) {
+                .navbar {
+                    position: relative;
+                }
+                
+                .nav-menu {
+                    position: absolute;
+                    left: -100%;
+                    top: 100%;
+                    flex-direction: column;
+                    background-color: #2d2d2d;
+                    width: 100%;
+                    text-align: center;
+                    transition: left 0.3s ease;
+                    border-top: 2px solid #333333;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                    margin: 0;
+                    padding: 0;
+                    z-index: 999;
+                }
+                
+                .nav-menu.active {
+                    left: 0;
+                }
+                
+                .nav-item {
+                    margin: 0;
+                    width: 100%;
+                }
+                
+                .nav-link {
+                    padding: 18px 20px;
+                    border-bottom: 1px solid #333333;
+                    display: block;
+                    width: 100%;
+                    text-align: center;
+                    border-left: none;
+                    border-right: none;
+                }
+                
+                .nav-link:last-child {
+                    border-bottom: none;
+                }
+                
+                .nav-toggle {
+                    display: flex;
+                }
+                
+                .header h1 {
+                    font-size: 2rem;
+                }
+                
+                .container {
+                    padding: 20px 10px;
+                }
+                
+                .events-timeline::before {
+                    left: 30px;
+                }
+                
+                .event-item {
+                    padding-left: 60px !important;
+                    padding-right: 0 !important;
+                    text-align: left !important;
+                }
+                
+                .event-item::before {
+                    left: 20px !important;
+                }
+                
+                .event-content::before {
+                    left: -30px !important;
+                    border-right-color: #ffffff !important;
+                    border-left-color: transparent !important;
+                }
+                
+                .event-meta {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                
+                .event-lightbox .lightbox-nav {
+                    font-size: 2rem;
+                    width: 50px;
+                    height: 50px;
+                }
+                
+                .event-lightbox .lightbox-close {
+                    font-size: 2rem;
+                    width: 50px;
+                    height: 50px;
+                    top: 10px;
+                    right: 10px;
+                }
+                
+                .lightbox-info {
+                    top: 10px;
+                    left: 10px;
+                    padding: 8px 12px;
+                    font-size: 0.8rem;
+                }
+                
+                #lightboxCounter {
+                    font-size: 0.9rem;
+                }
+                
+                #lightboxTitle {
+                    font-size: 0.7rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <a href="index.php" class="nav-logo">Tulenarium</a>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link active">Domů</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="admin.php" class="nav-link">Administrace</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="stats.php" class="nav-link">Statistiky</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="admin.php?logout=1" class="nav-link" onclick="return confirm('Opravdu se chcete odhlásit?')">Odhlásit se</a>
+                    </li>
+                </ul>
+                <div class="nav-toggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
-            <?php else: ?>
-                <?php foreach ($events as $event): ?>
-                    <div class="event-item" onclick="openEventDetail(<?php echo $event['id']; ?>)" id="event-<?php echo $event['id']; ?>">
-                        <div class="event-content">
-                            <?php if (!empty($event['thumbnail'])): ?>
-                                <?php 
-                                // Načtení všech fotek z eventu pro lightbox
-                                $eventImages = [];
-                                if (!empty($event['media'])) {
-                                    $media = json_decode($event['media'], true);
-                                    if (is_array($media)) {
-                                        foreach ($media as $file) {
-                                            if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])) {
-                                                $eventImages[] = $file;
+            </div>
+        </nav>
+        
+        <div class="container">
+            <div class="header">
+                <h1>Tulenarium</h1>
+                <p>Přehled našich společných zážitků</p>
+            </div>
+            
+            <?php if (isset($error)): ?>
+                <div class="error"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
+            
+            <div class="events-timeline">
+                <?php if (empty($events)): ?>
+                    <div class="no-events">
+                        <h2>Zatím nebyly přidány žádné eventy</h2>
+                        <p>Začněte přidáváním eventů v administraci.</p>
+                        <p style="margin-top: 15px;">
+                            <a href="admin.php" style="color: #667eea; text-decoration: none;">→ Přejít do administrace</a>
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($events as $event): ?>
+                        <div class="event-item" onclick="openEventDetail(<?php echo $event['id']; ?>)" id="event-<?php echo $event['id']; ?>">
+                            <div class="event-content">
+                                <?php if (!empty($event['thumbnail'])): ?>
+                                    <?php 
+                                    // Načtení všech fotek z eventu pro lightbox
+                                    $eventImages = [];
+                                    if (!empty($event['media'])) {
+                                        $media = json_decode($event['media'], true);
+                                        if (is_array($media)) {
+                                            foreach ($media as $file) {
+                                                if (in_array($file['type'], ['jpg', 'jpeg', 'png', 'gif'])) {
+                                                    $eventImages[] = $file;
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                ?>
-                                <img src="<?php echo getFileUrl($event['thumbnail']); ?>" 
-                                     alt="<?php echo htmlspecialchars($event['title']); ?>" 
-                                     class="event-thumbnail"
-                                     onclick="event.stopPropagation(); openEventLightboxFromThumbnail(<?php echo $event['id']; ?>, <?php echo htmlspecialchars(json_encode($eventImages)); ?>, '<?php echo htmlspecialchars($event['title']); ?>')">
-                            <?php endif; ?>
-                            
-                            <div class="event-title"><?php echo htmlspecialchars($event['title']); ?></div>
-                            
-                            <div class="event-meta">
-                                <span>📅 <?php echo formatDate($event['event_date']); ?></span>
-                                <span>👥 <?php echo $event['actual_participants_count']; ?> účastníků</span>
-                                <?php if (!empty($event['location'])): ?>
-                                    <span>📍 <?php echo htmlspecialchars($event['location']); ?></span>
+                                    ?>
+                                    <img src="<?php echo getFileUrl($event['thumbnail']); ?>" 
+                                        alt="<?php echo htmlspecialchars($event['title']); ?>" 
+                                        class="event-thumbnail"
+                                        onclick="event.stopPropagation(); openEventLightboxFromThumbnail(<?php echo $event['id']; ?>, <?php echo htmlspecialchars(json_encode($eventImages)); ?>, '<?php echo htmlspecialchars($event['title']); ?>')">
+                                <?php endif; ?>
+                                
+                                <div class="event-title"><?php echo htmlspecialchars($event['title']); ?></div>
+                                
+                                <div class="event-meta">
+                                    <span>📅 <?php echo formatDate($event['event_date']); ?></span>
+                                    <span>👥 <?php echo $event['actual_participants_count']; ?> účastníků</span>
+                                    <?php if (!empty($event['location'])): ?>
+                                        <span>📍 <?php echo htmlspecialchars($event['location']); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <?php if (!empty($event['description'])): ?>
+                                    <div class="event-description">
+                                        <?php echo nl2br(htmlspecialchars(truncateText($event['description']))); ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
-                            
-                            <?php if (!empty($event['description'])): ?>
-                                <div class="event-description">
-                                    <?php echo nl2br(htmlspecialchars(truncateText($event['description']))); ?>
-                                </div>
-                            <?php endif; ?>
                         </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-    </div>
-    
-    <!-- Modal pro detail eventu -->
-    <div id="eventModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">Detail eventu</div>
-                <button class="close-btn" onclick="closeEventDetail()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <div class="loading">Načítání...</div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
-    </div>
+        
+        <!-- Modal pro detail eventu -->
+        <div id="eventModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="modalTitle">Detail eventu</div>
+                    <button class="close-btn" onclick="closeEventDetail()">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <div class="loading">Načítání...</div>
+                </div>
+            </div>
+        </div>
 
-    <script>
-        // Zavření modalu při kliknutí mimo obsah
-        window.onclick = function(event) {
-            const modal = document.getElementById('eventModal');
-            if (event.target === modal) {
-                closeEventDetail();
-            }
-        }
-        
-        // Zavření modalu klávesou ESC a navigace v lightboxu
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeEventDetail();
-                closeEventLightboxFromThumbnail();
-            }
-            
-            // Navigace v lightboxu z náhledové fotky
-            const lightbox = document.getElementById('eventLightboxFromThumbnail');
-            if (lightbox && lightbox.style.display === 'block') {
-                switch(event.key) {
-                    case 'ArrowLeft':
-                        prevEventImageFromThumbnail();
-                        break;
-                    case 'ArrowRight':
-                        nextEventImageFromThumbnail();
-                        break;
+        <script>
+            // Zavření modalu při kliknutí mimo obsah
+            window.onclick = function(event) {
+                const modal = document.getElementById('eventModal');
+                if (event.target === modal) {
+                    closeEventDetail();
                 }
             }
             
-            // Navigace v lightboxu z event.php
-            const eventLightbox = document.getElementById('eventLightbox');
-            if (eventLightbox && eventLightbox.style.display === 'block') {
-                switch(event.key) {
-                    case 'ArrowLeft':
-                        prevEventImage();
-                        break;
-                    case 'ArrowRight':
-                        nextEventImage();
-                        break;
+            // Zavření modalu klávesou ESC a navigace v lightboxu
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeEventDetail();
+                    closeEventLightboxFromThumbnail();
                 }
-            }
-        });
-        
-        // Mobile navigation toggle
-        const navToggle = document.querySelector('.nav-toggle');
-        const navMenu = document.querySelector('.nav-menu');
-        
-        if (navToggle) {
-            navToggle.addEventListener('click', () => {
-                navMenu.classList.toggle('active');
-                navToggle.classList.toggle('active');
+                
+                // Navigace v lightboxu z náhledové fotky
+                const lightbox = document.getElementById('eventLightboxFromThumbnail');
+                if (lightbox && lightbox.style.display === 'block') {
+                    switch(event.key) {
+                        case 'ArrowLeft':
+                            prevEventImageFromThumbnail();
+                            break;
+                        case 'ArrowRight':
+                            nextEventImageFromThumbnail();
+                            break;
+                    }
+                }
+                
+                // Navigace v lightboxu z event.php
+                const eventLightbox = document.getElementById('eventLightbox');
+                if (eventLightbox && eventLightbox.style.display === 'block') {
+                    switch(event.key) {
+                        case 'ArrowLeft':
+                            prevEventImage();
+                            break;
+                        case 'ArrowRight':
+                            nextEventImage();
+                            break;
+                    }
+                }
             });
-        }
-        
-        // Close mobile menu when clicking on a link
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                if (navMenu) {
+            
+            // Mobile navigation toggle
+            const navToggle = document.querySelector('.nav-toggle');
+            const navMenu = document.querySelector('.nav-menu');
+            
+            if (navToggle) {
+                navToggle.addEventListener('click', () => {
+                    navMenu.classList.toggle('active');
+                    navToggle.classList.toggle('active');
+                });
+            }
+            
+            // Close mobile menu when clicking on a link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (navMenu) {
+                        navMenu.classList.remove('active');
+                        navToggle.classList.remove('active');
+                    }
+                });
+            });
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (navMenu && navToggle && 
+                    !navMenu.contains(e.target) && 
+                    !navToggle.contains(e.target) && 
+                    navMenu.classList.contains('active')) {
                     navMenu.classList.remove('active');
                     navToggle.classList.remove('active');
                 }
             });
-        });
-        
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (navMenu && navToggle && 
-                !navMenu.contains(e.target) && 
-                !navToggle.contains(e.target) && 
-                navMenu.classList.contains('active')) {
-                navMenu.classList.remove('active');
-                navToggle.classList.remove('active');
+            
+            // Smooth scroll k eventu při načtení stránky s hash
+            if (window.location.hash) {
+                const element = document.querySelector(window.location.hash);
+                if (element) {
+                    setTimeout(() => {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                }
             }
-        });
-        
-        // Smooth scroll k eventu při načtení stránky s hash
-        if (window.location.hash) {
-            const element = document.querySelector(window.location.hash);
-            if (element) {
-                setTimeout(() => {
-                    element.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-            }
-        }
-    </script>
-</body>
-</html>
+        </script>
+    </body>
+    </html>
 
